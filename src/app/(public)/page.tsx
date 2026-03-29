@@ -10,10 +10,11 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { ServiceCard } from "@/components/common/ServiceCard";
+import { TestimonialSlider } from "@/components/common/TestimonialSlider";
 import { mockServices } from "@/lib/mock/data/services";
+import { mockTestimonials } from "@/lib/mock/data/testimonials";
 import { useTranslation } from "@/i18n/useTranslation";
 import {
-  Star,
   Phone,
   Mail,
   MapPin,
@@ -25,33 +26,10 @@ import {
   ClipboardCheck,
 } from "lucide-react";
 
-const testimonials = [
-  {
-    name: "Ahmed Rahman",
-    text: "The Hijama therapy session was incredibly professional. I felt a significant improvement in my chronic back pain after just two sessions. Highly recommended!",
-    rating: 5,
-  },
-  {
-    name: "Fatima Begum",
-    text: "The Ruqyah sessions brought me immense peace. The practitioner was compassionate and knowledgeable. I felt safe throughout the entire process.",
-    rating: 5,
-  },
-  {
-    name: "Yusuf Islam",
-    text: "Islamic counseling helped me navigate a very difficult time in my life. The faith-based approach made all the difference in my recovery.",
-    rating: 4,
-  },
-  {
-    name: "Aisha Khatun",
-    text: "The health assessment was thorough and the recommendations were very helpful. Great service that combines modern and traditional healing.",
-    rating: 5,
-  },
-];
-
 const howItWorksIcons = [Search, CalendarCheck, Stethoscope, ClipboardCheck];
 
 export default function LandingPage() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
 
   return (
     <div className="flex flex-col">
@@ -212,37 +190,16 @@ export default function LandingPage() {
               {t.landing.testimonials.subtitle}
             </p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {testimonials.map((item, i) => (
-              <Card key={i} className="rounded-xl">
-                <CardContent className="p-6">
-                  <div className="flex gap-0.5 mb-4">
-                    {Array.from({ length: 5 }).map((_, s) => (
-                      <Star
-                        key={s}
-                        className={`h-4 w-4 ${
-                          s < item.rating
-                            ? "fill-amber-400 text-amber-400"
-                            : "text-muted-foreground/30"
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-                    &ldquo;{item.text}&rdquo;
-                  </p>
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-semibold text-sm">
-                      {item.name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")}
-                    </div>
-                    <span className="font-medium text-sm">{item.name}</span>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+
+          <TestimonialSlider testimonials={mockTestimonials} />
+
+          <div className="text-center mt-10">
+            <Button asChild variant="outline" size="lg" className="rounded-full px-8">
+              <Link href="/testimonials">
+                {locale === "bn" ? "সব রিভিউ দেখুন" : "See All Reviews"}
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
           </div>
         </div>
       </section>
