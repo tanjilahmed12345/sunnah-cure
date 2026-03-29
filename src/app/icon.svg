@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="256" fill="#0f9b7a"/>
+
+  <!-- Inner circle for depth -->
+  <circle cx="256" cy="256" r="230" fill="#0baf88"/>
+
+  <!-- Crescent moon shape -->
+  <circle cx="240" cy="220" r="100" fill="white"/>
+  <circle cx="275" cy="205" r="85" fill="#0baf88"/>
+
+  <!-- Star -->
+  <polygon points="310,180 318,200 340,200 322,214 328,235 310,222 292,235 298,214 280,200 302,200" fill="white"/>
+
+  <!-- Leaf / healing plant element -->
+  <path d="M256 280 Q230 330 240 380 Q256 360 272 380 Q282 330 256 280Z" fill="white" opacity="0.95"/>
+  <line x1="256" y1="290" x2="256" y2="370" stroke="#0baf88" stroke-width="3"/>
+
+  <!-- Small leaf veins -->
+  <line x1="256" y1="310" x2="244" y2="330" stroke="#0baf88" stroke-width="2"/>
+  <line x1="256" y1="330" x2="268" y2="350" stroke="#0baf88" stroke-width="2"/>
+
+  <!-- Bottom text arc: "SC" initials -->
+  <text x="256" y="445" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="60" fill="white" letter-spacing="8">SC</text>
+</svg>

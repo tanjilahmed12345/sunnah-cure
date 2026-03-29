@@ -15,6 +15,9 @@ export const metadata: Metadata = {
   title: "Sunnah Cure - Diagnostic Center Appointment Booking",
   description:
     "Book diagnostic appointments with ease. Hijama, Ruqyah, Counseling, and Health Assessments.",
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 export default function RootLayout({

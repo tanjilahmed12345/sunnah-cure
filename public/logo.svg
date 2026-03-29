@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <!-- Background rounded square -->
+  <rect width="512" height="512" rx="96" fill="#0f9b7a"/>
+  <rect x="16" y="16" width="480" height="480" rx="80" fill="#0baf88"/>
+
+  <!-- Crescent moon -->
+  <circle cx="230" cy="190" r="95" fill="white"/>
+  <circle cx="264" cy="176" r="80" fill="#0baf88"/>
+
+  <!-- Star -->
+  <polygon points="300,155 307,173 327,173 311,185 317,204 300,193 283,204 289,185 273,173 293,173" fill="white"/>
+
+  <!-- Leaf / healing element -->
+  <path d="M256 260 Q220 320 235 390 Q256 365 277 390 Q292 320 256 260Z" fill="white" opacity="0.95"/>
+  <line x1="256" y1="275" x2="256" y2="380" stroke="#0baf88" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M256 300 Q243 318 240 335" stroke="#0baf88" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <path d="M256 325 Q269 343 272 360" stroke="#0baf88" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+  <!-- Bottom text: SC -->
+  <text x="256" y="468" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="800" font-size="56" fill="white" letter-spacing="10">SC</text>
+</svg>

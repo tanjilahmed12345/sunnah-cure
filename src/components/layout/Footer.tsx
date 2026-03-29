@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Phone, Mail, MapPin, Clock, Globe, ExternalLink } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { Logo } from "@/components/common/Logo";
 import { useTranslation } from "@/i18n/useTranslation";
 
 export function Footer() {
@@ -14,12 +15,9 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* About */}
           <div>
-            <Link href="/" className="flex items-center gap-2 mb-4">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                <span className="text-sm font-bold text-primary-foreground">SC</span>
-              </div>
-              <span className="text-xl font-bold text-primary">Sunnah Cure</span>
-            </Link>
+            <div className="mb-4">
+              <Logo size="md" />
+            </div>
             <p className="text-sm text-muted-foreground leading-relaxed">
               {t.footer.description}
             </p>

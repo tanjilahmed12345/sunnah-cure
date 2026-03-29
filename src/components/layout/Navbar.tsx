@@ -9,6 +9,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
 import { LanguageSwitcher } from "@/components/common/LanguageSwitcher";
 import { UserAvatarDropdown } from "@/components/common/UserAvatarDropdown";
+import { Logo } from "@/components/common/Logo";
 import { useTranslation } from "@/i18n/useTranslation";
 import { NAV_ITEMS } from "@/lib/constants";
 import { mockCurrentUser } from "@/lib/mock/data/users";
@@ -32,12 +33,7 @@ export function Navbar() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-            <span className="text-sm font-bold text-primary-foreground">SC</span>
-          </div>
-          <span className="text-xl font-bold text-primary">Sunnah Cure</span>
-        </Link>
+        <Logo size="md" />
 
         {/* Desktop Nav */}
         <nav className="hidden md:flex items-center gap-1">

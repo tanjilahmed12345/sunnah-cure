@@ -25,6 +25,7 @@ import {
   DOCTOR_SIDEBAR_ITEMS,
   ADMIN_SIDEBAR_ITEMS,
 } from "@/lib/constants";
+import { Logo } from "@/components/common/Logo";
 import { cn } from "@/lib/utils";
 import type { UserRole } from "@/types";
 import { Menu } from "lucide-react";
@@ -119,12 +120,7 @@ export function Sidebar({ role }: SidebarProps) {
       >
         <div className={cn("flex items-center h-16 border-b px-4", collapsed ? "justify-center" : "justify-between")}>
           {!collapsed && (
-            <Link href="/" className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary">
-                <span className="text-xs font-bold text-primary-foreground">SC</span>
-              </div>
-              <span className="font-bold text-primary">Sunnah Cure</span>
-            </Link>
+            <Logo size="sm" />
           )}
           <Button
             variant="ghost"
@@ -151,12 +147,7 @@ export function Sidebar({ role }: SidebarProps) {
         </SheetTrigger>
         <SheetContent side="left" className="w-64 p-0">
           <div className="flex items-center h-16 border-b px-4">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary">
-                <span className="text-xs font-bold text-primary-foreground">SC</span>
-              </div>
-              <span className="font-bold text-primary">Sunnah Cure</span>
-            </Link>
+            <Logo size="sm" />
           </div>
           <SidebarContent />
         </SheetContent>
