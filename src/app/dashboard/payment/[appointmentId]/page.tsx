@@ -1,0 +1,449 @@
+"use client";
+
+import { useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useTranslation } from "@/i18n/useTranslation";
+import { mockAppointments } from "@/lib/mock/data/appointments";
+import {
+  mobilePaymentSchema,
+  paypalPaymentSchema,
+  cardPaymentSchema,
+  type MobilePaymentData,
+  type PaypalPaymentData,
+  type CardPaymentData,
+} from "@/lib/validations/payment";
+import { PageHeader } from "@/components/common/PageHeader";
+import { PaymentMethodCard } from "@/components/common/PaymentMethodCard";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { Loader2, CheckCircle } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
+import type { PaymentMethod } from "@/types";
+
+export default function PaymentPage() {
+  const { t } = useTranslation();
+  const params = useParams();
+  const router = useRouter();
+  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(
+    null
+  );
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [transactionId, setTransactionId] = useState("");
+
+  const appointment = mockAppointments.find(
+    (a) => a.id === params.appointmentId
+  );
+
+  const paymentMethods: { method: PaymentMethod; label: string }[] = [
+    { method: "bkash", label: t.payment.bkash },
+    { method: "nagad", label: t.payment.nagad },
+    { method: "rocket", label: t.payment.rocket },
+    { method: "paypal", label: t.payment.paypal },
+    { method: "stripe", label: t.payment.stripe },
+    { method: "card", label: t.payment.card },
+  ];
+
+  async function handlePayment() {
+    setIsProcessing(true);
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    setIsProcessing(false);
+    setTransactionId(
+      `TXN-${(selectedMethod || "").toUpperCase()}-${Date.now()}`
+    );
+    setIsSuccess(true);
+  }
+
+  if (isSuccess) {
+    return (
+      <div>
+        <PageHeader title={t.payment.title} />
+        <Card className="max-w-lg mx-auto">
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="mb-4 rounded-full bg-green-100 p-6 dark:bg-green-900/30 animate-in zoom-in duration-500">
+              <CheckCircle className="h-16 w-16 text-green-600 dark:text-green-400" />
+            </div>
+            <h2 className="text-2xl font-bold">{t.payment.successTitle}</h2>
+            <p className="mt-2 text-muted-foreground">
+              {t.payment.successMessage}
+            </p>
+            <p className="mt-1 font-mono font-semibold text-lg">
+              {transactionId}
+            </p>
+            <Button
+              className="mt-6"
+              onClick={() =>
+                router.push(
+                  appointment
+                    ? `/dashboard/appointments/${appointment.id}`
+                    : "/dashboard/appointments"
+                )
+              }
+            >
+              {t.payment.goToAppointment}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const amount = appointment?.paymentAmount || 0;
+
+  return (
+    <div>
+      <PageHeader
+        title={t.payment.title}
+        action={
+          <Button variant="outline" onClick={() => router.back()}>
+            {t.common.back}
+          </Button>
+        }
+      />
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Order Summary */}
+        <div className="lg:col-span-1">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">
+                {t.payment.orderSummary}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">
+                  {t.payment.serviceName}
+                </span>
+                <span className="font-medium">
+                  {appointment?.serviceName || "-"}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">{t.payment.mode}</span>
+                <span className="font-medium capitalize">
+                  {appointment?.mode || "-"}
+                </span>
+              </div>
+              <Separator />
+              <div className="flex justify-between">
+                <span className="font-medium">{t.payment.amount}</span>
+                <span className="text-xl font-bold">
+                  {formatCurrency(amount)}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Payment Methods & Form */}
+        <div className="lg:col-span-2 space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">
+                {t.payment.selectMethod}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {paymentMethods.map(({ method, label }) => (
+                  <PaymentMethodCard
+                    key={method}
+                    method={method}
+                    label={label}
+                    selected={selectedMethod === method}
+                    onSelect={() => setSelectedMethod(method)}
+                  />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Dynamic form based on selected method */}
+          {selectedMethod &&
+            ["bkash", "nagad", "rocket"].includes(selectedMethod) && (
+              <MobilePaymentForm
+                onSubmit={handlePayment}
+                isProcessing={isProcessing}
+              />
+            )}
+          {selectedMethod === "paypal" && (
+            <PaypalPaymentForm
+              onSubmit={handlePayment}
+              isProcessing={isProcessing}
+            />
+          )}
+          {selectedMethod &&
+            ["stripe", "card"].includes(selectedMethod) && (
+              <CardPaymentForm
+                onSubmit={handlePayment}
+                isProcessing={isProcessing}
+              />
+            )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Mobile Payment Form ─── */
+function MobilePaymentForm({
+  onSubmit,
+  isProcessing,
+}: {
+  onSubmit: () => void;
+  isProcessing: boolean;
+}) {
+  const { t } = useTranslation();
+
+  const form = useForm<MobilePaymentData>({
+    resolver: zodResolver(mobilePaymentSchema) as any,
+    defaultValues: {
+      phoneNumber: "",
+      pin: "",
+    },
+  });
+
+  return (
+    <Card>
+      <CardContent className="pt-6">
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(() => onSubmit())}
+            className="space-y-4"
+          >
+            <FormField
+              control={form.control}
+              name="phoneNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t.payment.phoneLabel}</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder={t.payment.phonePlaceholder}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="pin"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t.payment.pinLabel}</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="password"
+                      placeholder={t.payment.pinPlaceholder}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button
+              type="submit"
+              className="w-full"
+              size="lg"
+              disabled={isProcessing}
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {t.payment.processing}
+                </>
+              ) : (
+                t.payment.payNow
+              )}
+            </Button>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ─── PayPal Payment Form ─── */
+function PaypalPaymentForm({
+  onSubmit,
+  isProcessing,
+}: {
+  onSubmit: () => void;
+  isProcessing: boolean;
+}) {
+  const { t } = useTranslation();
+
+  const form = useForm<PaypalPaymentData>({
+    resolver: zodResolver(paypalPaymentSchema) as any,
+    defaultValues: {
+      email: "",
+    },
+  });
+
+  return (
+    <Card>
+      <CardContent className="pt-6">
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(() => onSubmit())}
+            className="space-y-4"
+          >
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t.payment.emailLabel}</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="email"
+                      placeholder={t.payment.emailPlaceholder}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button
+              type="submit"
+              className="w-full"
+              size="lg"
+              disabled={isProcessing}
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {t.payment.processing}
+                </>
+              ) : (
+                t.payment.payNow
+              )}
+            </Button>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ─── Card Payment Form ─── */
+function CardPaymentForm({
+  onSubmit,
+  isProcessing,
+}: {
+  onSubmit: () => void;
+  isProcessing: boolean;
+}) {
+  const { t } = useTranslation();
+
+  const form = useForm<CardPaymentData>({
+    resolver: zodResolver(cardPaymentSchema) as any,
+    defaultValues: {
+      cardNumber: "",
+      expiry: "",
+      cvv: "",
+    },
+  });
+
+  return (
+    <Card>
+      <CardContent className="pt-6">
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(() => onSubmit())}
+            className="space-y-4"
+          >
+            <FormField
+              control={form.control}
+              name="cardNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t.payment.cardNumber}</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder={t.payment.cardPlaceholder}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="expiry"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t.payment.expiry}</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder={t.payment.expiryPlaceholder}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="cvv"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t.payment.cvv}</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="password"
+                        placeholder={t.payment.cvvPlaceholder}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <Button
+              type="submit"
+              className="w-full"
+              size="lg"
+              disabled={isProcessing}
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {t.payment.processing}
+                </>
+              ) : (
+                t.payment.payNow
+              )}
+            </Button>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
+  );
+}

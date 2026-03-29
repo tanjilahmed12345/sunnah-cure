@@ -1,0 +1,26 @@
+import type { Timestamps } from "./common";
+
+export type ServiceType = "hijama" | "ruqyah" | "counseling" | "assessment";
+
+export interface Service extends Timestamps {
+  id: string;
+  type: ServiceType;
+  slug: string;
+  name: string;
+  nameBn: string;
+  description: string;
+  descriptionBn: string;
+  fullDescription: string;
+  fullDescriptionBn: string;
+  durationMinutes: number;
+  priceBDT: number;
+  isActive: boolean;
+  isOnline: boolean;
+  isOffline: boolean;
+  iconName: string;
+  imageUrl: string;
+  benefits: string[];
+  benefitsBn: string[];
+  whatToExpect: string[];
+  whatToExpectBn: string[];
+}

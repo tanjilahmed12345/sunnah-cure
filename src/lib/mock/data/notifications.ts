@@ -1,0 +1,48 @@
+import type { Notification } from "@/types";
+
+export const mockNotifications: Notification[] = [
+  {
+    id: "notif-1",
+    userId: "user-1",
+    type: "appointment_confirmed",
+    title: "Appointment Confirmed",
+    body: "Your Hijama therapy appointment has been confirmed for April 10, 2025 at 10:00 AM.",
+    isRead: false,
+    actionUrl: "/dashboard/appointments/apt-1",
+    createdAt: "2025-03-22T14:00:00Z",
+    updatedAt: "2025-03-22T14:00:00Z",
+  },
+  {
+    id: "notif-2",
+    userId: "user-1",
+    type: "new_message",
+    title: "New Message",
+    body: "You have a new message from Admin regarding your appointment.",
+    isRead: false,
+    actionUrl: "/dashboard/messages",
+    createdAt: "2025-03-22T15:00:00Z",
+    updatedAt: "2025-03-22T15:00:00Z",
+  },
+  {
+    id: "notif-3",
+    userId: "user-1",
+    type: "assessment_ready",
+    title: "Assessment Results Ready",
+    body: "Your health assessment has been reviewed. Check your results.",
+    isRead: true,
+    actionUrl: "/dashboard/assessments/assess-1",
+    createdAt: "2025-03-22T16:00:00Z",
+    updatedAt: "2025-03-22T16:00:00Z",
+  },
+  {
+    id: "notif-4",
+    userId: "user-1",
+    type: "appointment_cancelled",
+    title: "Appointment Rejected",
+    body: "Your counseling appointment request was rejected. Reason: Incomplete information.",
+    isRead: true,
+    actionUrl: "/dashboard/appointments/apt-6",
+    createdAt: "2025-03-06T09:00:00Z",
+    updatedAt: "2025-03-06T09:00:00Z",
+  },
+];
