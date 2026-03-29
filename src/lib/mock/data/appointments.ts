@@ -29,7 +29,7 @@ export const mockAppointments: Appointment[] = [
     serviceType: "ruqyah",
     serviceName: "Ruqyah Therapy",
     status: "pending",
-    mode: "online",
+    mode: "offline",
     paymentStatus: "unpaid",
     paymentAmount: 1000,
     serviceData: {
