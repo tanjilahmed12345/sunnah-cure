@@ -24,13 +24,18 @@ export function TestimonialSlider({
   const [current, setCurrent] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(1);
 
-  const visibleCount =
-    typeof window !== "undefined" && window.innerWidth >= 1024
-      ? 3
-      : typeof window !== "undefined" && window.innerWidth >= 640
-        ? 2
-        : 1;
+  useEffect(() => {
+    const updateVisibleCount = () => {
+      setVisibleCount(
+        window.innerWidth >= 1024 ? 3 : window.innerWidth >= 640 ? 2 : 1
+      );
+    };
+    updateVisibleCount();
+    window.addEventListener("resize", updateVisibleCount);
+    return () => window.removeEventListener("resize", updateVisibleCount);
+  }, []);
 
   const maxIndex = Math.max(testimonials.length - visibleCount, 0);
 
