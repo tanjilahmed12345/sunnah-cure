@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -57,11 +57,25 @@ import { formatCurrency } from "@/lib/utils";
 import type { ServiceType, AppointmentMode, Service } from "@/types";
 
 export default function BookAppointmentPage() {
+  return (
+    <Suspense>
+      <BookAppointmentContent />
+    </Suspense>
+  );
+}
+
+function BookAppointmentContent() {
   const { t } = useTranslation();
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState(1);
+  const searchParams = useSearchParams();
+  const serviceParam = searchParams.get("service") as ServiceType | null;
+  const validService = serviceParam && mockServices.some((s) => s.type === serviceParam && s.type !== "assessment")
+    ? serviceParam
+    : null;
+
+  const [currentStep, setCurrentStep] = useState(validService ? 2 : 1);
   const [selectedService, setSelectedService] = useState<ServiceType | null>(
-    null
+    validService
   );
   const [mode, setMode] = useState<AppointmentMode>("offline");
   const [isSubmitting, setIsSubmitting] = useState(false);
