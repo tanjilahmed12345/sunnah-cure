@@ -18,6 +18,8 @@ export interface HijamaData {
   type: "wet" | "dry" | "not_sure";
   numberOfCups?: number;
   bodyParts: string[];
+  medicalConditions?: string[];
+  medicalConditionOther?: string;
   additionalNotes?: string;
 }
 

@@ -128,6 +128,21 @@ export default function AdminAppointmentDetailPage() {
             <span className="text-muted-foreground">Body Parts</span>
             <span className="font-medium">{hijama.bodyParts.join(", ")}</span>
           </div>
+          {hijama.medicalConditions && hijama.medicalConditions.length > 0 && (
+            <div>
+              <span className="text-muted-foreground">Medical Conditions</span>
+              <p className="mt-1 text-sm font-medium">
+                {hijama.medicalConditions
+                  .map((c) => c === "other" && hijama.medicalConditionOther
+                    ? `Other: ${hijama.medicalConditionOther}`
+                    : c === "blood_pressure" ? "Blood Pressure"
+                    : c === "diabetes" ? "Diabetes"
+                    : c
+                  )
+                  .join(", ")}
+              </p>
+            </div>
+          )}
           {hijama.additionalNotes && (
             <div>
               <span className="text-muted-foreground">Notes</span>

@@ -335,6 +335,12 @@ function HijamaForm({
     { id: "Not Sure", label: t.booking.hijama.notSure },
   ];
 
+  const medicalConditionOptions = [
+    { id: "blood_pressure", label: "Blood Pressure" },
+    { id: "diabetes", label: "Diabetes" },
+    { id: "other", label: "Other" },
+  ];
+
   const form = useForm<HijamaBookingFormData>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(hijamaBookingSchema) as any,
@@ -342,6 +348,8 @@ function HijamaForm({
       type: "wet",
       numberOfCups: minCups,
       bodyParts: [],
+      medicalConditions: [],
+      medicalConditionOther: "",
       additionalNotes: "",
     },
   });
@@ -349,6 +357,8 @@ function HijamaForm({
   const watchedCups = form.watch("numberOfCups");
   const effectiveCups = Math.max(watchedCups || minCups, minCups);
   const livePrice = effectiveCups * pricePerCup;
+  const watchedConditions = form.watch("medicalConditions") || [];
+  const showOtherInput = watchedConditions.includes("other");
 
   return (
     <Card>
@@ -474,6 +484,70 @@ function HijamaForm({
                 </FormItem>
               )}
             />
+            {/* Medical Conditions */}
+            <FormField
+              control={form.control}
+              name="medicalConditions"
+              render={() => (
+                <FormItem>
+                  <FormLabel>Medical Conditions</FormLabel>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Do you have any of the following medical conditions?
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {medicalConditionOptions.map((condition) => (
+                      <FormField
+                        key={condition.id}
+                        control={form.control}
+                        name="medicalConditions"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value?.includes(condition.id)}
+                                onCheckedChange={(checked) => {
+                                  const current = field.value || [];
+                                  const updated = checked
+                                    ? [...current, condition.id]
+                                    : current.filter((v) => v !== condition.id);
+                                  field.onChange(updated);
+                                  if (!checked && condition.id === "other") {
+                                    form.setValue("medicalConditionOther", "");
+                                  }
+                                }}
+                              />
+                            </FormControl>
+                            <FormLabel className="font-normal cursor-pointer">
+                              {condition.label}
+                            </FormLabel>
+                          </FormItem>
+                        )}
+                      />
+                    ))}
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            {showOtherInput && (
+              <FormField
+                control={form.control}
+                name="medicalConditionOther"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Please specify</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Describe your medical condition..."
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
             <FormField
               control={form.control}
               name="additionalNotes"
