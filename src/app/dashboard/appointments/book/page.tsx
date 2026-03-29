@@ -54,7 +54,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
-import type { ServiceType, AppointmentMode } from "@/types";
+import type { ServiceType, AppointmentMode, Service } from "@/types";
 
 export default function BookAppointmentPage() {
   const { t } = useTranslation();
@@ -68,6 +68,7 @@ export default function BookAppointmentPage() {
   const [serviceFormData, setServiceFormData] = useState<
     HijamaBookingFormData | RuqyahBookingFormData | CounselingBookingFormData | null
   >(null);
+  const [calculatedPrice, setCalculatedPrice] = useState<number | null>(null);
 
   const steps = [
     { title: t.booking.step1 },
@@ -90,6 +91,12 @@ export default function BookAppointmentPage() {
     data: HijamaBookingFormData | RuqyahBookingFormData | CounselingBookingFormData
   ) {
     setServiceFormData(data);
+    if (selectedService === "hijama" && selectedServiceData?.hijamaPricing) {
+      const cups = (data as HijamaBookingFormData).numberOfCups || selectedServiceData.hijamaPricing.minCups;
+      setCalculatedPrice(cups * selectedServiceData.hijamaPricing.pricePerCup);
+    } else {
+      setCalculatedPrice(null);
+    }
     setCurrentStep(3);
   }
 
@@ -126,10 +133,11 @@ export default function BookAppointmentPage() {
       )}
 
       {/* Step 2: Service-specific form */}
-      {currentStep === 2 && selectedService === "hijama" && (
+      {currentStep === 2 && selectedService === "hijama" && selectedServiceData && (
         <HijamaForm
           onSubmit={handleServiceFormSubmit}
           onBack={() => setCurrentStep(1)}
+          service={selectedServiceData}
         />
       )}
       {currentStep === 2 && selectedService === "ruqyah" && (
@@ -198,12 +206,33 @@ export default function BookAppointmentPage() {
                 </span>
                 <span className="font-medium capitalize">{mode}</span>
               </div>
+              {selectedService === "hijama" && serviceFormData && selectedServiceData.hijamaPricing && (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">
+                      Number of Cups
+                    </span>
+                    <span className="font-medium">
+                      {(serviceFormData as HijamaBookingFormData).numberOfCups}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      Rate per Cup
+                    </span>
+                    <span className="text-muted-foreground">
+                      {formatCurrency(selectedServiceData.hijamaPricing.pricePerCup)}
+                    </span>
+                  </div>
+                </>
+              )}
+              <Separator />
               <div className="flex justify-between">
                 <span className="text-muted-foreground">
                   {t.payment.amount}
                 </span>
                 <span className="font-semibold text-lg">
-                  {formatCurrency(selectedServiceData.priceBDT)}
+                  {formatCurrency(calculatedPrice ?? selectedServiceData.priceBDT)}
                 </span>
               </div>
             </div>
@@ -273,11 +302,16 @@ export default function BookAppointmentPage() {
 function HijamaForm({
   onSubmit,
   onBack,
+  service,
 }: {
   onSubmit: (data: HijamaBookingFormData) => void;
   onBack: () => void;
+  service: Service;
 }) {
   const { t } = useTranslation();
+  const pricing = service.hijamaPricing;
+  const minCups = pricing?.minCups ?? 3;
+  const pricePerCup = pricing?.pricePerCup ?? 200;
 
   const bodyParts = [
     { id: "Head", label: t.booking.hijama.head },
@@ -292,11 +326,15 @@ function HijamaForm({
     resolver: zodResolver(hijamaBookingSchema) as any,
     defaultValues: {
       type: "wet",
-      numberOfCups: undefined,
+      numberOfCups: minCups,
       bodyParts: [],
       additionalNotes: "",
     },
   });
+
+  const watchedCups = form.watch("numberOfCups");
+  const effectiveCups = Math.max(watchedCups || minCups, minCups);
+  const livePrice = effectiveCups * pricePerCup;
 
   return (
     <Card>
@@ -349,14 +387,38 @@ function HijamaForm({
                   <FormControl>
                     <Input
                       type="number"
-                      placeholder={t.booking.hijama.cupsPlaceholder}
+                      min={minCups}
+                      placeholder={`Minimum ${minCups}`}
                       {...field}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || minCups;
+                        field.onChange(Math.max(val, minCups));
+                      }}
                     />
                   </FormControl>
+                  <p className="text-xs text-muted-foreground">
+                    Minimum {minCups} cups &middot; {formatCurrency(pricePerCup)} per cup
+                  </p>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
+            {/* Live Price Preview */}
+            <div className="rounded-lg border bg-muted/50 p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Estimated Total</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {effectiveCups} cups &times; {formatCurrency(pricePerCup)}
+                  </p>
+                </div>
+                <p className="text-2xl font-bold text-primary">
+                  {formatCurrency(livePrice)}
+                </p>
+              </div>
+            </div>
+
             <FormField
               control={form.control}
               name="bodyParts"

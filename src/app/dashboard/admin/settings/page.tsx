@@ -28,6 +28,8 @@ export default function AdminSettingsPage() {
       editIsOnline: s.isOnline,
       editIsOffline: s.isOffline,
       editIsActive: s.isActive,
+      editMinCups: s.hijamaPricing?.minCups ?? 3,
+      editPricePerCup: s.hijamaPricing?.pricePerCup ?? 200,
     }))
   );
 
@@ -109,21 +111,64 @@ export default function AdminSettingsPage() {
                   />
                 </div>
 
-                <div>
-                  <Label>Price (BDT)</Label>
-                  <Input
-                    type="number"
-                    value={service.editPrice}
-                    onChange={(e) =>
-                      updateService(
-                        index,
-                        "editPrice",
-                        parseInt(e.target.value) || 0
-                      )
-                    }
-                    className="mt-1"
-                  />
-                </div>
+                {service.type === "hijama" ? (
+                  <div className="space-y-3 rounded-lg border p-3 bg-muted/30">
+                    <Label className="text-sm font-semibold">Cup-Based Pricing</Label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs">Minimum Cups</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          value={service.editMinCups}
+                          onChange={(e) =>
+                            updateService(
+                              index,
+                              "editMinCups",
+                              parseInt(e.target.value) || 1
+                            )
+                          }
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Price per Cup (BDT)</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          value={service.editPricePerCup}
+                          onChange={(e) =>
+                            updateService(
+                              index,
+                              "editPricePerCup",
+                              parseInt(e.target.value) || 1
+                            )
+                          }
+                          className="mt-1"
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Base price: {formatCurrency(service.editMinCups * service.editPricePerCup)} ({service.editMinCups} cups &times; {formatCurrency(service.editPricePerCup)})
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <Label>Price (BDT)</Label>
+                    <Input
+                      type="number"
+                      value={service.editPrice}
+                      onChange={(e) =>
+                        updateService(
+                          index,
+                          "editPrice",
+                          parseInt(e.target.value) || 0
+                        )
+                      }
+                      className="mt-1"
+                    />
+                  </div>
+                )}
 
                 <div className="flex items-center gap-6">
                   <div className="flex items-center gap-2">
@@ -154,7 +199,9 @@ export default function AdminSettingsPage() {
 
                 <div className="flex items-center justify-between text-sm text-muted-foreground pt-2 border-t">
                   <span>
-                    Current price: {formatCurrency(service.priceBDT)}
+                    {service.type === "hijama" && service.hijamaPricing
+                      ? `From ${formatCurrency(service.hijamaPricing.minCups * service.hijamaPricing.pricePerCup)}`
+                      : `Current price: ${formatCurrency(service.priceBDT)}`}
                   </span>
                   <span>{service.durationMinutes} min</span>
                 </div>

@@ -2,7 +2,7 @@ import { z } from "zod/v4";
 
 export const hijamaBookingSchema = z.object({
   type: z.enum(["wet", "dry", "not_sure"]),
-  numberOfCups: z.coerce.number().optional(),
+  numberOfCups: z.coerce.number().min(1, "Number of cups is required"),
   bodyParts: z.array(z.string()).min(1, "Select at least one body part"),
   additionalNotes: z.string().optional(),
 });

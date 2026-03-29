@@ -12,12 +12,16 @@ export const mockServices: Service[] = [
     fullDescription: "Hijama (cupping therapy) is a Prophetic medicine practice recommended by the Prophet Muhammad (PBUH). Our certified practitioners perform both wet and dry cupping to help with a variety of health conditions including chronic pain, migraines, fatigue, and blood circulation issues. Each session is conducted in a clean, hygienic environment following strict medical protocols.",
     fullDescriptionBn: "হিজামা (কাপিং থেরাপি) হলো নবী মুহাম্মদ (সা.) কর্তৃক প্রস্তাবিত একটি নবীজির চিকিৎসা পদ্ধতি। আমাদের সার্টিফাইড চিকিৎসকরা দীর্ঘস্থায়ী ব্যথা, মাইগ্রেন, ক্লান্তি এবং রক্ত সঞ্চালনের সমস্যাসহ বিভিন্ন স্বাস্থ্য সমস্যায় সাহায্য করতে ভেজা ও শুকনো উভয় কাপিং সম্পাদন করেন।",
     durationMinutes: 60,
-    priceBDT: 1500,
+    priceBDT: 600,
     isActive: true,
     isOnline: false,
     isOffline: true,
     iconName: "Heart",
     imageUrl: "/images/hijama.jpg",
+    hijamaPricing: {
+      minCups: 3,
+      pricePerCup: 200,
+    },
     benefits: [
       "Improves blood circulation",
       "Reduces chronic pain",

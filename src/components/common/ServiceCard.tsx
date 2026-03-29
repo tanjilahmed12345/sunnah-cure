@@ -61,7 +61,9 @@ export function ServiceCard({ service, showActions = true }: ServiceCardProps) {
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <span>{service.durationMinutes} min</span>
           <span className="font-semibold text-foreground">
-            {formatCurrency(service.priceBDT)}
+            {service.hijamaPricing
+              ? `From ${formatCurrency(service.hijamaPricing.minCups * service.hijamaPricing.pricePerCup)}`
+              : formatCurrency(service.priceBDT)}
           </span>
         </div>
       </CardContent>

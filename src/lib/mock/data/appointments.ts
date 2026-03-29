@@ -12,7 +12,7 @@ export const mockAppointments: Appointment[] = [
     scheduledDate: "2025-04-10",
     scheduledTime: "10:00 AM",
     paymentStatus: "unpaid",
-    paymentAmount: 1500,
+    paymentAmount: 1200,
     serviceData: {
       type: "wet",
       numberOfCups: 6,
@@ -69,9 +69,10 @@ export const mockAppointments: Appointment[] = [
     scheduledDate: "2025-03-18",
     scheduledTime: "11:00 AM",
     paymentStatus: "unpaid",
-    paymentAmount: 1500,
+    paymentAmount: 600,
     serviceData: {
       type: "dry",
+      numberOfCups: 3,
       bodyParts: ["Head"],
     },
     createdAt: "2025-03-12T09:00:00Z",

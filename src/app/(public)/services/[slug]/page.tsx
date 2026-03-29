@@ -202,8 +202,15 @@ export default function ServiceDetailPage() {
                         {t.servicesPage.price}
                       </p>
                       <p className="font-medium text-lg text-primary">
-                        {formatCurrency(service.priceBDT)}
+                        {service.hijamaPricing
+                          ? `From ${formatCurrency(service.hijamaPricing.minCups * service.hijamaPricing.pricePerCup)}`
+                          : formatCurrency(service.priceBDT)}
                       </p>
+                      {service.hijamaPricing && (
+                        <p className="text-xs text-muted-foreground">
+                          {formatCurrency(service.hijamaPricing.pricePerCup)} per cup &middot; Min {service.hijamaPricing.minCups} cups
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-3">

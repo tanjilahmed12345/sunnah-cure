@@ -2,6 +2,11 @@ import type { Timestamps } from "./common";
 
 export type ServiceType = "hijama" | "ruqyah" | "counseling" | "assessment";
 
+export interface HijamaPricing {
+  minCups: number;
+  pricePerCup: number;
+}
+
 export interface Service extends Timestamps {
   id: string;
   type: ServiceType;
@@ -23,4 +28,5 @@ export interface Service extends Timestamps {
   benefitsBn: string[];
   whatToExpect: string[];
   whatToExpectBn: string[];
+  hijamaPricing?: HijamaPricing;
 }
