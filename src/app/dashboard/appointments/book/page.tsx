@@ -69,7 +69,7 @@ function BookAppointmentContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const serviceParam = searchParams.get("service") as ServiceType | null;
-  const validService = serviceParam && mockServices.some((s) => s.type === serviceParam && s.type !== "assessment")
+  const validService = serviceParam && mockServices.some((s) => s.type === serviceParam)
     ? serviceParam
     : null;
 
@@ -91,7 +91,7 @@ function BookAppointmentContent() {
     { title: t.booking.step4 },
   ];
 
-  const bookableServices = mockServices.filter((s) => s.type !== "assessment");
+  const bookableServices = mockServices;
   const selectedServiceData = mockServices.find(
     (s) => s.type === selectedService
   );
@@ -106,8 +106,12 @@ function BookAppointmentContent() {
   ) {
     setServiceFormData(data);
     if (selectedService === "hijama" && selectedServiceData?.hijamaPricing) {
-      const cups = (data as HijamaBookingFormData).numberOfCups || selectedServiceData.hijamaPricing.minCups;
-      setCalculatedPrice(cups * selectedServiceData.hijamaPricing.pricePerCup);
+      const hijamaData = data as HijamaBookingFormData;
+      if (hijamaData.numberOfCups && hijamaData.numberOfCups > 0) {
+        setCalculatedPrice(hijamaData.numberOfCups * selectedServiceData.hijamaPricing.pricePerCup);
+      } else {
+        setCalculatedPrice(null); // "not sure" — pay after session
+      }
     } else {
       setCalculatedPrice(null);
     }
@@ -132,7 +136,7 @@ function BookAppointmentContent() {
       {currentStep === 1 && (
         <div>
           <p className="text-muted-foreground mb-6">{t.booking.selectService}</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {bookableServices.map((service) => (
               <div
                 key={service.id}
@@ -165,6 +169,48 @@ function BookAppointmentContent() {
           onSubmit={handleServiceFormSubmit}
           onBack={() => setCurrentStep(1)}
         />
+      )}
+      {currentStep === 2 && selectedService === "assessment" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Health Assessment Booking</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-muted-foreground">
+              Our comprehensive health assessment evaluates your physical, mental, and spiritual well-being.
+              A qualified practitioner will review your case and recommend the most suitable services.
+            </p>
+            <div className="rounded-lg border bg-muted/50 p-4">
+              <p className="text-sm font-medium">What to expect:</p>
+              <ul className="mt-2 text-sm text-muted-foreground space-y-1 list-disc list-inside">
+                <li>Initial consultation with a practitioner</li>
+                <li>Personalized health evaluation</li>
+                <li>Recommendations within 24-48 hours</li>
+              </ul>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => setCurrentStep(1)}
+                className="flex-1"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                {t.common.back}
+              </Button>
+              <Button
+                onClick={() => {
+                  setServiceFormData(null);
+                  setCalculatedPrice(null);
+                  setCurrentStep(3);
+                }}
+                className="flex-1"
+              >
+                {t.common.next}
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Step 3: Mode + Confirmation */}
@@ -221,34 +267,52 @@ function BookAppointmentContent() {
                 <span className="font-medium capitalize">{mode}</span>
               </div>
               {selectedService === "hijama" && serviceFormData && selectedServiceData.hijamaPricing && (
-                <>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">
-                      Number of Cups
-                    </span>
-                    <span className="font-medium">
-                      {(serviceFormData as HijamaBookingFormData).numberOfCups}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      Rate per Cup
-                    </span>
-                    <span className="text-muted-foreground">
-                      {formatCurrency(selectedServiceData.hijamaPricing.pricePerCup)}
-                    </span>
-                  </div>
-                </>
+                (() => {
+                  const cups = (serviceFormData as HijamaBookingFormData).numberOfCups;
+                  const knowsCups = cups && cups > 0;
+                  return knowsCups ? (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Number of Cups</span>
+                        <span className="font-medium">{cups}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Rate per Cup</span>
+                        <span className="text-muted-foreground">
+                          {formatCurrency(selectedServiceData.hijamaPricing.pricePerCup)}
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Number of Cups</span>
+                      <span className="font-medium text-amber-600">To be decided at session</span>
+                    </div>
+                  );
+                })()
               )}
               <Separator />
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">
-                  {t.payment.amount}
-                </span>
-                <span className="font-semibold text-lg">
-                  {formatCurrency(calculatedPrice ?? selectedServiceData.priceBDT)}
-                </span>
-              </div>
+              {calculatedPrice != null ? (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">{t.payment.amount}</span>
+                  <span className="font-semibold text-lg">
+                    {formatCurrency(calculatedPrice)}
+                  </span>
+                </div>
+              ) : selectedService === "hijama" ? (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20 p-3">
+                  <p className="text-sm text-amber-700 dark:text-amber-400">
+                    Payment will be calculated after the session based on the number of cups used.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">{t.payment.amount}</span>
+                  <span className="font-semibold text-lg">
+                    {formatCurrency(selectedServiceData.priceBDT)}
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="flex gap-3 pt-4">
@@ -354,6 +418,7 @@ function HijamaForm({
     },
   });
 
+  const [notSureCups, setNotSureCups] = useState(false);
   const watchedCups = form.watch("numberOfCups");
   const effectiveCups = Math.max(watchedCups || minCups, minCups);
   const livePrice = effectiveCups * pricePerCup;
@@ -402,46 +467,77 @@ function HijamaForm({
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="numberOfCups"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t.booking.hijama.cupsLabel}</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      min={minCups}
-                      placeholder={`Minimum ${minCups}`}
-                      {...field}
-                      onChange={(e) => {
-                        const val = parseInt(e.target.value) || minCups;
-                        field.onChange(Math.max(val, minCups));
-                      }}
-                    />
-                  </FormControl>
-                  <p className="text-xs text-muted-foreground">
-                    Minimum {minCups} cups &middot; {formatCurrency(pricePerCup)} per cup
-                  </p>
-                  <FormMessage />
-                </FormItem>
+            <div>
+              <div className="flex items-center space-x-2 mb-3">
+                <Checkbox
+                  id="not-sure-cups"
+                  checked={notSureCups}
+                  onCheckedChange={(checked) => {
+                    setNotSureCups(!!checked);
+                    if (checked) {
+                      form.setValue("numberOfCups", 0);
+                    } else {
+                      form.setValue("numberOfCups", minCups);
+                    }
+                  }}
+                />
+                <Label htmlFor="not-sure-cups" className="text-sm cursor-pointer">
+                  I&apos;m not sure about the number of cups
+                </Label>
+              </div>
+
+              {!notSureCups && (
+                <FormField
+                  control={form.control}
+                  name="numberOfCups"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t.booking.hijama.cupsLabel}</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={minCups}
+                          placeholder={`Minimum ${minCups}`}
+                          {...field}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value) || minCups;
+                            field.onChange(Math.max(val, minCups));
+                          }}
+                        />
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground">
+                        Minimum {minCups} cups &middot; {formatCurrency(pricePerCup)} per cup
+                      </p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               )}
-            />
+            </div>
 
             {/* Live Price Preview */}
-            <div className="rounded-lg border bg-muted/50 p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Estimated Total</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {effectiveCups} cups &times; {formatCurrency(pricePerCup)}
-                  </p>
-                </div>
-                <p className="text-2xl font-bold text-primary">
-                  {formatCurrency(livePrice)}
+            {notSureCups ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20 p-4">
+                <p className="text-sm text-amber-700 dark:text-amber-400">
+                  The practitioner will decide the number of cups during your session.
+                  Payment will be calculated afterwards at {formatCurrency(pricePerCup)} per cup.
                 </p>
               </div>
-            </div>
+            ) : (
+              <div className="rounded-lg border bg-muted/50 p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Estimated Total</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {effectiveCups} cups &times; {formatCurrency(pricePerCup)}
+                    </p>
+                  </div>
+                  <p className="text-2xl font-bold text-primary">
+                    {formatCurrency(livePrice)}
+                  </p>
+                </div>
+              </div>
+            )}
 
             <FormField
               control={form.control}

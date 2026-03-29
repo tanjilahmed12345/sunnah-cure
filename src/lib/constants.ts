@@ -56,7 +56,6 @@ export const PATIENT_SIDEBAR_ITEMS = [
 
 export const DOCTOR_SIDEBAR_ITEMS = [
   { label: "dashboard.sidebar.overview", href: "/dashboard/doctor", icon: "LayoutDashboard" },
-  { label: "dashboard.sidebar.patients", href: "/dashboard/doctor/appointments", icon: "Users" },
   { label: "dashboard.sidebar.appointments", href: "/dashboard/doctor/appointments", icon: "CalendarCheck" },
   { label: "dashboard.sidebar.messages", href: "/dashboard/messages", icon: "MessageSquare" },
   { label: "dashboard.sidebar.profile", href: "/dashboard/profile", icon: "User" },
