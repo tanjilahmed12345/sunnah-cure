@@ -107,13 +107,19 @@ export const mockServices: Service[] = [
     descriptionBn: "মানসিক স্বাস্থ্য ও ব্যক্তিগত উন্নয়নের জন্য বিশ্বাস-ভিত্তিক কাউন্সেলিং।",
     fullDescription: "Our Islamic counseling service combines modern psychological techniques with Islamic principles to address mental health concerns, family issues, marital problems, and personal development goals. Our counselors are trained professionals who understand the unique needs of Muslim individuals and families.",
     fullDescriptionBn: "আমাদের ইসলামিক কাউন্সেলিং সেবা মানসিক স্বাস্থ্য উদ্বেগ, পারিবারিক সমস্যা, দাম্পত্য সমস্যা এবং ব্যক্তিগত উন্নয়ন লক্ষ্যে আধুনিক মনোবৈজ্ঞানিক কৌশল ও ইসলামিক নীতির সমন্বয় করে।",
-    durationMinutes: 60,
+    durationMinutes: 30,
     priceBDT: 2000,
     isActive: true,
     isOnline: true,
     isOffline: true,
     iconName: "Users",
     imageUrl: "/images/counseling.jpg",
+    modePricing: {
+      onlinePriceBDT: 1000,
+      offlinePriceBDT: 2000,
+      onlineDurationMinutes: 15,
+      offlineDurationMinutes: 30,
+    },
     benefits: [
       "Professional mental health support",
       "Faith-integrated approach",
@@ -160,6 +166,12 @@ export const mockServices: Service[] = [
     isOffline: true,
     iconName: "ClipboardList",
     imageUrl: "/images/assessment.jpg",
+    modePricing: {
+      onlinePriceBDT: 300,
+      offlinePriceBDT: 500,
+      onlineDurationMinutes: 20,
+      offlineDurationMinutes: 30,
+    },
     benefits: [
       "Holistic health evaluation",
       "Personalized recommendations",

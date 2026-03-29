@@ -30,6 +30,10 @@ export default function AdminSettingsPage() {
       editIsActive: s.isActive,
       editMinCups: s.hijamaPricing?.minCups ?? 3,
       editPricePerCup: s.hijamaPricing?.pricePerCup ?? 200,
+      editOnlinePrice: s.modePricing?.onlinePriceBDT ?? s.priceBDT,
+      editOfflinePrice: s.modePricing?.offlinePriceBDT ?? s.priceBDT,
+      editOnlineDuration: s.modePricing?.onlineDurationMinutes ?? s.durationMinutes,
+      editOfflineDuration: s.modePricing?.offlineDurationMinutes ?? s.durationMinutes,
     }))
   );
 
@@ -151,6 +155,60 @@ export default function AdminSettingsPage() {
                     <p className="text-xs text-muted-foreground">
                       Base price: {formatCurrency(service.editMinCups * service.editPricePerCup)} ({service.editMinCups} cups &times; {formatCurrency(service.editPricePerCup)})
                     </p>
+                  </div>
+                ) : service.editIsOnline && service.editIsOffline ? (
+                  <div className="space-y-3 rounded-lg border p-3 bg-muted/30">
+                    <Label className="text-sm font-semibold">Mode-Based Pricing</Label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs">Offline Price (BDT)</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={service.editOfflinePrice}
+                          onChange={(e) =>
+                            updateService(index, "editOfflinePrice", parseInt(e.target.value) || 0)
+                          }
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Online Price (BDT)</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={service.editOnlinePrice}
+                          onChange={(e) =>
+                            updateService(index, "editOnlinePrice", parseInt(e.target.value) || 0)
+                          }
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Offline Duration (min)</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          value={service.editOfflineDuration}
+                          onChange={(e) =>
+                            updateService(index, "editOfflineDuration", parseInt(e.target.value) || 1)
+                          }
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Online Duration (min)</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          value={service.editOnlineDuration}
+                          onChange={(e) =>
+                            updateService(index, "editOnlineDuration", parseInt(e.target.value) || 1)
+                          }
+                          className="mt-1"
+                        />
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   <div>

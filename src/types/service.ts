@@ -7,6 +7,13 @@ export interface HijamaPricing {
   pricePerCup: number;
 }
 
+export interface ModePricing {
+  onlinePriceBDT?: number;
+  offlinePriceBDT?: number;
+  onlineDurationMinutes?: number;
+  offlineDurationMinutes?: number;
+}
+
 export interface Service extends Timestamps {
   id: string;
   type: ServiceType;
@@ -29,4 +36,5 @@ export interface Service extends Timestamps {
   whatToExpect: string[];
   whatToExpectBn: string[];
   hijamaPricing?: HijamaPricing;
+  modePricing?: ModePricing;
 }

@@ -104,11 +104,14 @@ export function Footer() {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
           <p>{t.footer.copyright}</p>
           <div className="flex gap-4">
-            <Link href="#" className="hover:text-foreground transition-colors">
+            <Link href="/terms" className="hover:text-foreground transition-colors">
               {t.footer.termsOfService}
             </Link>
-            <Link href="#" className="hover:text-foreground transition-colors">
+            <Link href="/privacy" className="hover:text-foreground transition-colors">
               {t.footer.privacyPolicy}
+            </Link>
+            <Link href="/refund-policy" className="hover:text-foreground transition-colors">
+              Refund Policy
             </Link>
           </div>
         </div>

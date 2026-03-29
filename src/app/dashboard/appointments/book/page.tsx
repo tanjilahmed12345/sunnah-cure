@@ -214,132 +214,160 @@ function BookAppointmentContent() {
       )}
 
       {/* Step 3: Mode + Confirmation */}
-      {currentStep === 3 && selectedServiceData && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{t.booking.confirmDetails}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Mode Selection */}
-            <div>
-              <h3 className="font-medium mb-3">{t.booking.modeSelection}</h3>
-              <RadioGroup
-                value={mode}
-                onValueChange={(v) => setMode(v as AppointmentMode)}
-                className="flex gap-4"
-              >
-                {selectedServiceData.isOnline && (
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="online" id="online" />
-                    <Label htmlFor="online">{t.appointments.online}</Label>
+      {currentStep === 3 && selectedServiceData && (() => {
+        const mp = selectedServiceData.modePricing;
+        const modePrice = mp
+          ? (mode === "online" ? mp.onlinePriceBDT : mp.offlinePriceBDT) ?? selectedServiceData.priceBDT
+          : selectedServiceData.priceBDT;
+        const modeDuration = mp
+          ? (mode === "online" ? mp.onlineDurationMinutes : mp.offlineDurationMinutes) ?? selectedServiceData.durationMinutes
+          : selectedServiceData.durationMinutes;
+        const isHijamaWithKnownCups = selectedService === "hijama" && calculatedPrice != null;
+        const isHijamaUnsure = selectedService === "hijama" && calculatedPrice == null;
+        const displayPrice = isHijamaWithKnownCups ? calculatedPrice : modePrice;
+        const isOnline = mode === "online";
+
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>{t.booking.confirmDetails}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Mode Selection */}
+              <div>
+                <h3 className="font-medium mb-3">{t.booking.modeSelection}</h3>
+                <RadioGroup
+                  value={mode}
+                  onValueChange={(v) => setMode(v as AppointmentMode)}
+                  className="flex gap-4"
+                >
+                  {selectedServiceData.isOffline && (
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="offline" id="offline" />
+                      <Label htmlFor="offline">
+                        {t.appointments.offline}
+                        {mp?.offlinePriceBDT != null && (
+                          <span className="text-xs text-muted-foreground ml-1">
+                            ({formatCurrency(mp.offlinePriceBDT)} &middot; {mp.offlineDurationMinutes} min)
+                          </span>
+                        )}
+                      </Label>
+                    </div>
+                  )}
+                  {selectedServiceData.isOnline && (
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="online" id="online" />
+                      <Label htmlFor="online">
+                        {t.appointments.online}
+                        {mp?.onlinePriceBDT != null && (
+                          <span className="text-xs text-muted-foreground ml-1">
+                            ({formatCurrency(mp.onlinePriceBDT)} &middot; {mp.onlineDurationMinutes} min)
+                          </span>
+                        )}
+                      </Label>
+                    </div>
+                  )}
+                </RadioGroup>
+                {isOnline && (
+                  <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20 p-3 mt-3">
+                    <p className="text-sm text-blue-700 dark:text-blue-400">
+                      Online appointments require advance payment. After payment, your booking request will be sent to the doctor.
+                      You will be contacted to schedule a date and time.
+                    </p>
                   </div>
                 )}
-                {selectedServiceData.isOffline && (
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="offline" id="offline" />
-                    <Label htmlFor="offline">{t.appointments.offline}</Label>
-                  </div>
-                )}
-              </RadioGroup>
-              {mode === "online" && (
-                <p className="text-sm text-muted-foreground mt-2">
-                  {t.booking.counseling.onlinePaymentNote}
-                </p>
-              )}
-            </div>
-
-            <Separator />
-
-            {/* Summary */}
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">
-                  {t.appointments.service}
-                </span>
-                <span className="font-medium">
-                  {selectedServiceData.name}
-                </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">
-                  {t.appointments.mode}
-                </span>
-                <span className="font-medium capitalize">{mode}</span>
-              </div>
-              {selectedService === "hijama" && serviceFormData && selectedServiceData.hijamaPricing && (
-                (() => {
-                  const cups = (serviceFormData as HijamaBookingFormData).numberOfCups;
-                  const knowsCups = cups && cups > 0;
-                  return knowsCups ? (
-                    <>
+
+              <Separator />
+
+              {/* Summary */}
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">{t.appointments.service}</span>
+                  <span className="font-medium">{selectedServiceData.name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">{t.appointments.mode}</span>
+                  <span className="font-medium capitalize">{mode}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Duration</span>
+                  <span className="font-medium">{modeDuration} min</span>
+                </div>
+                {selectedService === "hijama" && serviceFormData && selectedServiceData.hijamaPricing && (
+                  (() => {
+                    const cups = (serviceFormData as HijamaBookingFormData).numberOfCups;
+                    const knowsCups = cups && cups > 0;
+                    return knowsCups ? (
+                      <>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Number of Cups</span>
+                          <span className="font-medium">{cups}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Rate per Cup</span>
+                          <span className="text-muted-foreground">
+                            {formatCurrency(selectedServiceData.hijamaPricing.pricePerCup)}
+                          </span>
+                        </div>
+                      </>
+                    ) : (
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Number of Cups</span>
-                        <span className="font-medium">{cups}</span>
+                        <span className="font-medium text-amber-600">To be decided at session</span>
                       </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Rate per Cup</span>
-                        <span className="text-muted-foreground">
-                          {formatCurrency(selectedServiceData.hijamaPricing.pricePerCup)}
-                        </span>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Number of Cups</span>
-                      <span className="font-medium text-amber-600">To be decided at session</span>
-                    </div>
-                  );
-                })()
-              )}
-              <Separator />
-              {calculatedPrice != null ? (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t.payment.amount}</span>
-                  <span className="font-semibold text-lg">
-                    {formatCurrency(calculatedPrice)}
-                  </span>
-                </div>
-              ) : selectedService === "hijama" ? (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20 p-3">
-                  <p className="text-sm text-amber-700 dark:text-amber-400">
-                    Payment will be calculated after the session based on the number of cups used.
-                  </p>
-                </div>
-              ) : (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t.payment.amount}</span>
-                  <span className="font-semibold text-lg">
-                    {formatCurrency(selectedServiceData.priceBDT)}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            <div className="flex gap-3 pt-4">
-              <Button
-                variant="outline"
-                onClick={() => setCurrentStep(2)}
-                className="flex-1"
-              >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                {t.common.back}
-              </Button>
-              <Button
-                onClick={handleFinalSubmit}
-                className="flex-1"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <ArrowRight className="mr-2 h-4 w-4" />
+                    );
+                  })()
                 )}
-                {t.booking.submitBooking}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                <Separator />
+                {isHijamaUnsure ? (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20 p-3">
+                    <p className="text-sm text-amber-700 dark:text-amber-400">
+                      Payment will be calculated after the session based on the number of cups used.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">{t.payment.amount}</span>
+                    <span className="font-semibold text-lg">{formatCurrency(displayPrice)}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setCurrentStep(2)}
+                  className="flex-1"
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  {t.common.back}
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (isOnline) {
+                      handleFinalSubmit().then(() => {
+                        router.push("/dashboard/payment/new-appointment");
+                      });
+                    } else {
+                      handleFinalSubmit();
+                    }
+                  }}
+                  className="flex-1"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <ArrowRight className="mr-2 h-4 w-4" />
+                  )}
+                  {isOnline ? "Pay & Book" : t.booking.submitBooking}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Step 4: Success */}
       {currentStep === 4 && (
