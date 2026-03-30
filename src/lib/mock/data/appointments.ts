@@ -117,4 +117,44 @@ export const mockAppointments: Appointment[] = [
     createdAt: "2025-03-05T15:00:00Z",
     updatedAt: "2025-03-06T09:00:00Z",
   },
+  {
+    id: "apt-7",
+    patientId: "user-3",
+    doctorId: "doc-2",
+    serviceType: "hijama",
+    serviceName: "Hijama Therapy",
+    status: "approved",
+    mode: "online",
+    scheduledDate: "2025-04-10",
+    scheduledTime: "2:00 PM",
+    paymentStatus: "paid",
+    paymentAmount: 1500,
+    serviceData: {
+      type: "wet",
+      numberOfCups: 5,
+      bodyParts: ["Head", "Back"],
+    },
+    assessmentData: {
+      step1: {
+        prayerFrequency: "sometimes",
+        quranFrequency: "weekly",
+        spiritualPractices: ["Daily Dua"],
+      },
+      step2: {
+        physicalSymptoms: ["Frequent headaches", "Chronic fatigue"],
+        elaboration: "Headaches mostly in the morning.",
+      },
+      step3: {
+        emotionalSymptoms: ["Persistent anxiety"],
+        emotionalDetails: "Stress from work.",
+      },
+      step4: {
+        spiritualSymptoms: [],
+        preferredMode: "online",
+        contactTime: "Afternoon",
+      },
+    },
+    createdAt: "2025-03-30T09:00:00Z",
+    updatedAt: "2025-03-31T10:00:00Z",
+  },
 ];

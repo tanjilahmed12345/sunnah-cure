@@ -29,6 +29,7 @@ import { mockMessages } from "@/lib/mock/data/messages";
 import { mockPayments } from "@/lib/mock/data/payments";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import type { Appointment, HijamaData, RuqyahData, CounselingData } from "@/types";
+import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft,
   User,
@@ -37,6 +38,7 @@ import {
   MapPin,
   Send,
   MessageSquare,
+  ClipboardList,
 } from "lucide-react";
 
 export default function AdminAppointmentDetailPage() {
@@ -344,6 +346,86 @@ export default function AdminAppointmentDetailPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Assessment Data */}
+          {appointment.assessmentData && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ClipboardList className="h-5 w-5" />
+                  Patient Assessment
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                {/* Step 1 */}
+                <div>
+                  <h4 className="text-sm font-medium mb-2">Spiritual Background</h4>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Prayer Frequency</span>
+                      <p className="font-medium capitalize">{appointment.assessmentData.step1.prayerFrequency.replace("_", " ")}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Quran Reading</span>
+                      <p className="font-medium capitalize">{appointment.assessmentData.step1.quranFrequency}</p>
+                    </div>
+                  </div>
+                  {appointment.assessmentData.step1.spiritualPractices.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {appointment.assessmentData.step1.spiritualPractices.map((p) => (
+                        <Badge key={p} variant="secondary" className="text-xs">{p}</Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <Separator />
+                {/* Step 2 */}
+                <div>
+                  <h4 className="text-sm font-medium mb-2">Physical Symptoms</h4>
+                  {appointment.assessmentData.step2.physicalSymptoms.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {appointment.assessmentData.step2.physicalSymptoms.map((s) => (
+                        <Badge key={s} variant="secondary" className="text-xs">{s}</Badge>
+                      ))}
+                    </div>
+                  )}
+                  {appointment.assessmentData.step2.elaboration && (
+                    <p className="text-sm text-muted-foreground mt-2">{appointment.assessmentData.step2.elaboration}</p>
+                  )}
+                </div>
+                <Separator />
+                {/* Step 3 */}
+                <div>
+                  <h4 className="text-sm font-medium mb-2">Emotional Symptoms</h4>
+                  {appointment.assessmentData.step3.emotionalSymptoms.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {appointment.assessmentData.step3.emotionalSymptoms.map((s) => (
+                        <Badge key={s} variant="secondary" className="text-xs">{s}</Badge>
+                      ))}
+                    </div>
+                  )}
+                  {appointment.assessmentData.step3.emotionalDetails && (
+                    <p className="text-sm text-muted-foreground mt-2">{appointment.assessmentData.step3.emotionalDetails}</p>
+                  )}
+                </div>
+                <Separator />
+                {/* Step 4 */}
+                <div>
+                  <h4 className="text-sm font-medium mb-2">Spiritual Symptoms</h4>
+                  {appointment.assessmentData.step4.spiritualSymptoms.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {appointment.assessmentData.step4.spiritualSymptoms.map((s) => (
+                        <Badge key={s} variant="secondary" className="text-xs">{s}</Badge>
+                      ))}
+                    </div>
+                  )}
+                  {appointment.assessmentData.step4.additionalNotes && (
+                    <p className="text-sm text-muted-foreground mt-2">{appointment.assessmentData.step4.additionalNotes}</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Payment Info */}
           {payment && (

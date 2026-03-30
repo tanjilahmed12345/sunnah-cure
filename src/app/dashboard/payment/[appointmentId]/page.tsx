@@ -33,9 +33,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, CheckCircle } from "lucide-react";
+import { Loader2, CheckCircle, Download } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { mockUsers } from "@/lib/mock/data/users";
 import type { PaymentMethod } from "@/types";
+import jsPDF from "jspdf";
 
 export default function PaymentPage() {
   const { t } = useTranslation();
@@ -71,6 +73,95 @@ export default function PaymentPage() {
     setIsSuccess(true);
   }
 
+  function downloadInvoice() {
+    if (!appointment) return;
+    const patient = mockUsers.find((u) => u.id === appointment.patientId);
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    // Header
+    doc.setFillColor(39, 124, 89);
+    doc.rect(0, 0, pageWidth, 40, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
+    doc.setFont("helvetica", "bold");
+    doc.text("Sunnah Cure", 20, 18);
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text("Islamic Healing & Wellness Center", 20, 26);
+    doc.setFontSize(18);
+    doc.text("INVOICE", pageWidth - 20, 22, { align: "right" });
+
+    // Invoice details
+    doc.setTextColor(60, 60, 60);
+    doc.setFontSize(10);
+    let y = 55;
+    doc.setFont("helvetica", "bold");
+    doc.text("Invoice Date:", 20, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }), 60, y);
+    y += 7;
+    doc.setFont("helvetica", "bold");
+    doc.text("Transaction ID:", 20, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(transactionId, 60, y);
+    y += 7;
+    doc.setFont("helvetica", "bold");
+    doc.text("Payment Method:", 20, y);
+    doc.setFont("helvetica", "normal");
+    doc.text((selectedMethod || "").toUpperCase(), 65, y);
+
+    // Patient info
+    y += 14;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text("Patient Information", 20, y);
+    y += 8;
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Name: ${patient?.name || "N/A"}`, 20, y);
+    y += 6;
+    doc.text(`Phone: ${patient?.phone || "N/A"}`, 20, y);
+
+    // Service table
+    y += 14;
+    doc.setFillColor(240, 240, 240);
+    doc.rect(20, y, pageWidth - 40, 8, "F");
+    doc.setFont("helvetica", "bold");
+    doc.text("Service", 25, y + 6);
+    doc.text("Mode", 100, y + 6);
+    doc.text("Amount", pageWidth - 25, y + 6, { align: "right" });
+    y += 12;
+    doc.setFont("helvetica", "normal");
+    doc.text(appointment.serviceName, 25, y + 4);
+    doc.text(appointment.mode.charAt(0).toUpperCase() + appointment.mode.slice(1), 100, y + 4);
+    doc.text(
+      new Intl.NumberFormat("en-BD", { style: "currency", currency: "BDT", minimumFractionDigits: 0 }).format(amount),
+      pageWidth - 25, y + 4, { align: "right" }
+    );
+    y += 10;
+    doc.setDrawColor(200, 200, 200);
+    doc.line(20, y, pageWidth - 20, y);
+    y += 8;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text("Total Paid:", 100, y);
+    doc.text(
+      new Intl.NumberFormat("en-BD", { style: "currency", currency: "BDT", minimumFractionDigits: 0 }).format(amount),
+      pageWidth - 25, y, { align: "right" }
+    );
+
+    // Footer
+    y += 20;
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(120, 120, 120);
+    doc.text("This is a computer-generated invoice. No signature required.", pageWidth / 2, y, { align: "center" });
+    doc.text("Sunnah Cure — May Allah grant you complete healing.", pageWidth / 2, y + 6, { align: "center" });
+
+    doc.save(`invoice-${transactionId}.pdf`);
+  }
+
   if (isSuccess) {
     return (
       <div>
@@ -87,18 +178,26 @@ export default function PaymentPage() {
             <p className="mt-1 font-mono font-semibold text-lg">
               {transactionId}
             </p>
-            <Button
-              className="mt-6"
-              onClick={() =>
-                router.push(
-                  appointment
-                    ? `/dashboard/appointments/${appointment.id}`
-                    : "/dashboard/appointments"
-                )
-              }
-            >
-              {t.payment.goToAppointment}
-            </Button>
+            <div className="flex gap-3 mt-6">
+              <Button
+                variant="outline"
+                onClick={downloadInvoice}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Download Invoice
+              </Button>
+              <Button
+                onClick={() =>
+                  router.push(
+                    appointment
+                      ? `/dashboard/appointments/${appointment.id}`
+                      : "/dashboard/appointments"
+                  )
+                }
+              >
+                {t.payment.goToAppointment}
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>

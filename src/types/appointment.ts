@@ -2,6 +2,7 @@ import type { Timestamps } from "./common";
 import type { ServiceType } from "./service";
 import type { User } from "./user";
 import type { DoctorProfile } from "./doctor";
+import type { AssessmentFormData } from "./assessment";
 
 export type AppointmentStatus =
   | "pending"
@@ -57,6 +58,7 @@ export interface Appointment extends Timestamps {
   serviceData?: ServiceSpecificData;
   adminNotes?: string;
   rejectionReason?: string;
+  assessmentData?: AssessmentFormData;
 }
 
 export interface CreateAppointmentRequest {

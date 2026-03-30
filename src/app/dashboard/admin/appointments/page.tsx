@@ -1,20 +1,22 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "@/i18n/useTranslation";
 import { toast } from "sonner";
+import { format, isSameDay, parseISO } from "date-fns";
 import { PageHeader } from "@/components/common/PageHeader";
 import { SearchInput } from "@/components/common/SearchInput";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { PaymentStatusBadge } from "@/components/common/PaymentStatusBadge";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Dialog,
   DialogContent,
@@ -26,7 +28,7 @@ import { mockAppointments } from "@/lib/mock/data/appointments";
 import { mockUsers } from "@/lib/mock/data/users";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import type { Appointment } from "@/types";
-import { Eye, Check, X } from "lucide-react";
+import { Eye, Check, X, CalendarDays } from "lucide-react";
 
 export default function AdminAppointmentsPage() {
   const { t } = useTranslation();
@@ -41,6 +43,25 @@ export default function AdminAppointmentsPage() {
   const [approveTime, setApproveTime] = useState("");
   const [rejectReason, setRejectReason] = useState("");
   const [appointments, setAppointments] = useState<Appointment[]>([...mockAppointments]);
+  const [hoveredDate, setHoveredDate] = useState<Date | null>(null);
+  const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
+  const calendarRef = useRef<HTMLDivElement>(null);
+
+  const appointmentsByDate = useMemo(() => {
+    const map = new Map<string, Appointment[]>();
+    appointments.forEach((apt) => {
+      if (apt.scheduledDate) {
+        const key = apt.scheduledDate;
+        if (!map.has(key)) map.set(key, []);
+        map.get(key)!.push(apt);
+      }
+    });
+    return map;
+  }, [appointments]);
+
+  const datesWithAppointments = useMemo(() => {
+    return Array.from(appointmentsByDate.keys()).map((d) => parseISO(d));
+  }, [appointmentsByDate]);
 
   const getPatientName = useCallback((patientId: string) => {
     return mockUsers.find((u) => u.id === patientId)?.name || "Unknown";
@@ -288,6 +309,85 @@ export default function AdminAppointmentsPage() {
           className="max-w-sm"
         />
       </div>
+
+      {/* Appointment Calendar */}
+      <Card className="mb-6">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <CalendarDays className="h-5 w-5" />
+            Appointment Calendar
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="relative" ref={calendarRef}>
+            <Calendar
+              mode="single"
+              modifiers={{
+                hasAppointment: datesWithAppointments,
+              }}
+              modifiersClassNames={{
+                hasAppointment:
+                  "relative after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:h-1.5 after:w-1.5 after:rounded-full after:bg-primary",
+              }}
+              onDayMouseEnter={(date, _modifiers, e) => {
+                const dateStr = format(date, "yyyy-MM-dd");
+                if (appointmentsByDate.has(dateStr)) {
+                  setHoveredDate(date);
+                  const rect = (e.target as HTMLElement).getBoundingClientRect();
+                  const calRect = calendarRef.current?.getBoundingClientRect();
+                  if (calRect) {
+                    setTooltipPos({
+                      x: rect.left - calRect.left + rect.width / 2,
+                      y: rect.top - calRect.top - 8,
+                    });
+                  }
+                }
+              }}
+              onDayMouseLeave={() => {
+                setHoveredDate(null);
+                setTooltipPos(null);
+              }}
+              className="mx-auto"
+            />
+            {/* Hover Tooltip */}
+            {hoveredDate && tooltipPos && (() => {
+              const dateStr = format(hoveredDate, "yyyy-MM-dd");
+              const dayAppointments = appointmentsByDate.get(dateStr) || [];
+              return (
+                <div
+                  className="absolute z-50 w-72 rounded-md border bg-popover p-3 text-popover-foreground shadow-lg pointer-events-none"
+                  style={{
+                    left: tooltipPos.x,
+                    top: tooltipPos.y,
+                    transform: "translate(-50%, -100%)",
+                  }}
+                >
+                  <p className="text-sm font-semibold mb-2 border-b pb-1">
+                    {format(hoveredDate, "MMM dd, yyyy")} — {dayAppointments.length} appointment{dayAppointments.length > 1 ? "s" : ""}
+                  </p>
+                  <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                    {dayAppointments.map((apt) => (
+                      <div key={apt.id} className="text-xs space-y-0.5">
+                        <div className="flex justify-between">
+                          <span className="font-mono text-muted-foreground">{apt.id.toUpperCase()}</span>
+                          <span className="text-muted-foreground">{apt.scheduledTime || "TBD"}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium">{getPatientName(apt.patientId)}</span>
+                          <StatusBadge status={apt.status} />
+                        </div>
+                        {apt !== dayAppointments[dayAppointments.length - 1] && (
+                          <div className="border-b pt-1" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        </CardContent>
+      </Card>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="mb-4">
