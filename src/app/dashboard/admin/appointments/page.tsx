@@ -43,6 +43,7 @@ export default function AdminAppointmentsPage() {
   const [approveTime, setApproveTime] = useState("");
   const [rejectReason, setRejectReason] = useState("");
   const [appointments, setAppointments] = useState<Appointment[]>([...mockAppointments]);
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date | undefined>(undefined);
   const [hoveredDate, setHoveredDate] = useState<Date | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
   const calendarRef = useRef<HTMLDivElement>(null);
@@ -74,6 +75,11 @@ export default function AdminAppointmentsPage() {
   const filteredAppointments = useMemo(() => {
     let filtered = [...appointments];
 
+    if (selectedCalendarDate) {
+      const dateStr = format(selectedCalendarDate, "yyyy-MM-dd");
+      filtered = filtered.filter((a) => a.scheduledDate === dateStr);
+    }
+
     if (activeTab !== "all") {
       filtered = filtered.filter((a) => a.status === activeTab);
     }
@@ -92,7 +98,7 @@ export default function AdminAppointmentsPage() {
       (a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
-  }, [activeTab, searchQuery, appointments, getPatientName, getPatientPhone]);
+  }, [activeTab, searchQuery, appointments, getPatientName, getPatientPhone, selectedCalendarDate]);
 
   const handleApprove = (apt: Appointment) => {
     setSelectedAppointment(apt);
@@ -322,6 +328,14 @@ export default function AdminAppointmentsPage() {
           <div className="relative" ref={calendarRef}>
             <Calendar
               mode="single"
+              selected={selectedCalendarDate}
+              onSelect={(date) => {
+                if (selectedCalendarDate && date && isSameDay(selectedCalendarDate, date)) {
+                  setSelectedCalendarDate(undefined);
+                } else {
+                  setSelectedCalendarDate(date ?? undefined);
+                }
+              }}
               modifiers={{
                 hasAppointment: datesWithAppointments,
               }}
@@ -347,7 +361,7 @@ export default function AdminAppointmentsPage() {
                 setHoveredDate(null);
                 setTooltipPos(null);
               }}
-              className="mx-auto"
+              className="mx-auto w-full [--cell-size:--spacing(10)] sm:[--cell-size:--spacing(12)]"
             />
             {/* Hover Tooltip */}
             {hoveredDate && tooltipPos && (() => {
@@ -388,6 +402,27 @@ export default function AdminAppointmentsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {selectedCalendarDate && (
+        <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
+          <CalendarDays className="h-4 w-4" />
+          <span>
+            Showing appointments for{" "}
+            <strong className="text-foreground">
+              {format(selectedCalendarDate, "MMM dd, yyyy")}
+            </strong>
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-xs"
+            onClick={() => setSelectedCalendarDate(undefined)}
+          >
+            <X className="h-3 w-3 mr-1" />
+            Clear
+          </Button>
+        </div>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="mb-4">
