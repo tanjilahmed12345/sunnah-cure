@@ -75,22 +75,25 @@ WSGI_APPLICATION = "config.wsgi.application"
 DATABASE_URL = config("DATABASE_URL", default="")
 
 if DATABASE_URL:
-    import re
+    from urllib.parse import urlparse, parse_qs
 
-    m = re.match(
-        r"postgres(?:ql)?://(?P<user>[^:]+):(?P<password>[^@]+)@(?P<host>[^:/]+)(?::(?P<port>\d+))?/(?P<name>[^?]+)",
-        DATABASE_URL,
-    )
-    if m:
+    parsed = urlparse(DATABASE_URL)
+    if parsed.scheme.startswith("postgres") and parsed.hostname:
+        db_options = {"sslmode": "require"}
+        # Parse query params for extra options
+        query_params = parse_qs(parsed.query)
+        if "channel_binding" in query_params:
+            db_options["channel_binding"] = query_params["channel_binding"][0]
+
         DATABASES = {
             "default": {
                 "ENGINE": "django.db.backends.postgresql",
-                "NAME": m.group("name"),
-                "USER": m.group("user"),
-                "PASSWORD": m.group("password"),
-                "HOST": m.group("host"),
-                "PORT": m.group("port") or "5432",
-                "OPTIONS": {"sslmode": "require"},
+                "NAME": parsed.path.lstrip("/"),
+                "USER": parsed.username,
+                "PASSWORD": parsed.password,
+                "HOST": parsed.hostname,
+                "PORT": parsed.port or 5432,
+                "OPTIONS": db_options,
             }
         }
     else:
