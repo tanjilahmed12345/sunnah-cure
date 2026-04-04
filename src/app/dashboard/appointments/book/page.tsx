@@ -54,7 +54,7 @@ import {
   Loader2,
   ClipboardList,
 } from "lucide-react";
-import { formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import type { ServiceType, AppointmentMode, Service, AssessmentFormData } from "@/types";
 
 export default function BookAppointmentPage() {
@@ -88,18 +88,39 @@ function BookAppointmentContent() {
 
   const isAssessmentService = selectedService === "hijama" || selectedService === "ruqyah";
 
-  const steps = [
-    { title: t.booking.step1 },
-    { title: t.booking.step2 },
-    { title: t.booking.step3 },
-    { title: t.booking.step4 },
-  ];
-
   const STEP_SERVICE = 1;
   const STEP_FORM = 2;
   const STEP_ASSESSMENT = 99; // special step, not in indicator
+  const STEP_ASSESSMENT_FORM = 98; // assessment service 3-step form
   const STEP_CONFIRM = 3;
   const STEP_SUCCESS = 4;
+
+  const isAssessmentFlow = selectedService === "assessment";
+  const steps = isAssessmentFlow
+    ? [
+        { title: t.booking.step1 },
+        { title: t.booking.step2 },
+        { title: t.booking.stepAssessment },
+        { title: t.booking.step3 },
+      ]
+    : [
+        { title: t.booking.step1 },
+        { title: t.booking.step2 },
+        { title: t.booking.step3 },
+      ];
+
+  // Map internal step to display step for StepIndicator
+  const displayStep = isAssessmentFlow
+    ? currentStep === STEP_ASSESSMENT_FORM
+      ? 3
+      : currentStep === STEP_CONFIRM
+      ? 4
+      : currentStep === STEP_SUCCESS
+      ? 4
+      : currentStep
+    : currentStep === STEP_SUCCESS
+    ? STEP_CONFIRM
+    : currentStep;
 
   const bookableServices = mockServices;
   const selectedServiceData = mockServices.find(
@@ -140,7 +161,9 @@ function BookAppointmentContent() {
     <div>
       <PageHeader title={t.booking.title} />
 
-      <StepIndicator steps={steps} currentStep={currentStep} className="mb-8" />
+      {currentStep !== STEP_SUCCESS && (
+        <StepIndicator steps={steps} currentStep={displayStep} className="mb-8" />
+      )}
 
       {/* Step 1: Choose Service */}
       {currentStep === STEP_SERVICE && (
@@ -211,7 +234,7 @@ function BookAppointmentContent() {
                 onClick={() => {
                   setServiceFormData(null);
                   setCalculatedPrice(null);
-                  setCurrentStep(STEP_CONFIRM);
+                  setCurrentStep(STEP_ASSESSMENT_FORM);
                 }}
                 className="flex-1"
               >
@@ -231,6 +254,18 @@ function BookAppointmentContent() {
             setCurrentStep(STEP_CONFIRM);
           }}
           onBack={() => setCurrentStep(STEP_CONFIRM)}
+          initialData={assessmentData}
+        />
+      )}
+
+      {/* Assessment Service Form (3-step: Physical, Mental, Spiritual) */}
+      {currentStep === STEP_ASSESSMENT_FORM && (
+        <AssessmentServiceForm
+          onSubmit={(data) => {
+            setAssessmentData(data);
+            setCurrentStep(STEP_CONFIRM);
+          }}
+          onBack={() => setCurrentStep(STEP_FORM)}
           initialData={assessmentData}
         />
       )}
@@ -400,7 +435,7 @@ function BookAppointmentContent() {
                 )}
                 <Button
                   variant="outline"
-                  onClick={() => setCurrentStep(STEP_FORM)}
+                  onClick={() => setCurrentStep(isAssessmentFlow ? STEP_ASSESSMENT_FORM : STEP_FORM)}
                   className="flex-1"
                 >
                   <ArrowLeft className="mr-2 h-4 w-4" />
@@ -1380,6 +1415,403 @@ function InlineAssessmentForm({
               onClick={() => onSubmit({ step1, step2, step3, step4 })}
               className="flex-1"
             >
+              <CheckCircle className="mr-2 h-4 w-4" />
+              Complete Assessment
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ─── Assessment Service Form (3-step: Physical, Mental, Spiritual) ─── */
+function AssessmentServiceForm({
+  onSubmit,
+  onBack,
+  initialData,
+}: {
+  onSubmit: (data: AssessmentFormData) => void;
+  onBack: () => void;
+  initialData: AssessmentFormData | null;
+}) {
+  const { t } = useTranslation();
+  const [subStep, setSubStep] = useState(1);
+  const totalSubSteps = 3;
+
+  const subStepLabels = ["Physical Info", "Mental Info", "Spiritual Info"];
+
+  // Physical info (maps to AssessmentStep2)
+  const [physical, setPhysical] = useState(
+    initialData?.step2 || {
+      physicalSymptoms: [] as string[],
+      elaboration: "",
+    }
+  );
+
+  // Mental info (maps to AssessmentStep3)
+  const [mental, setMental] = useState(
+    initialData?.step3 || {
+      emotionalSymptoms: [] as string[],
+      emotionalDetails: "",
+      previousDiagnosis: "",
+    }
+  );
+
+  // Spiritual info (maps to AssessmentStep1 + AssessmentStep4)
+  const [spiritual, setSpiritual] = useState(
+    initialData
+      ? {
+          prayerFrequency: initialData.step1.prayerFrequency,
+          quranFrequency: initialData.step1.quranFrequency,
+          spiritualPractices: initialData.step1.spiritualPractices,
+          confidentialNotes: initialData.step1.confidentialNotes || "",
+          spiritualSymptoms: initialData.step4.spiritualSymptoms,
+          unusualBehavior: initialData.step4.unusualBehavior || "",
+          familyHistory: initialData.step4.familyHistory || "",
+        }
+      : {
+          prayerFrequency: "5_times" as const,
+          quranFrequency: "daily" as const,
+          spiritualPractices: [] as string[],
+          confidentialNotes: "",
+          spiritualSymptoms: [] as string[],
+          unusualBehavior: "",
+          familyHistory: "",
+        }
+  );
+
+  function toggleItem(arr: string[], item: string): string[] {
+    return arr.includes(item) ? arr.filter((v) => v !== item) : [...arr, item];
+  }
+
+  const physicalSymptomOpts = [
+    "Frequent headaches",
+    "Unexplained body pain",
+    "Sleep disturbances/Insomnia",
+    "Changes in appetite",
+    "Chronic fatigue",
+    "Tightness in chest",
+    "Skin issues",
+  ];
+  const emotionalSymptomOpts = [
+    "Persistent anxiety",
+    "Depression/sadness",
+    "Sudden anger outbursts",
+    "Unexplained fearfulness",
+    "Frequent nightmares",
+    "Social withdrawal",
+    "Difficulty concentrating",
+    "Mood swings",
+  ];
+  const spiritualPracticeOpts = [
+    "Regular Dhikr",
+    "Daily Dua",
+    "Tahajjud Prayer",
+    "Charity/Sadaqah",
+    "Fasting",
+    "None",
+  ];
+  const spiritualSymptomOpts = [
+    "Hearing whispers/voices",
+    "Seeing shadows/figures",
+    "Feeling unseen presence",
+    "Aversion when hearing Quran",
+    "Unexplained marks on body",
+    "Feeling of being watched",
+  ];
+
+  function handleComplete() {
+    const data: AssessmentFormData = {
+      step1: {
+        prayerFrequency: spiritual.prayerFrequency,
+        quranFrequency: spiritual.quranFrequency,
+        spiritualPractices: spiritual.spiritualPractices,
+        confidentialNotes: spiritual.confidentialNotes,
+      },
+      step2: {
+        physicalSymptoms: physical.physicalSymptoms,
+        elaboration: physical.elaboration,
+      },
+      step3: {
+        emotionalSymptoms: mental.emotionalSymptoms,
+        emotionalDetails: mental.emotionalDetails,
+        previousDiagnosis: mental.previousDiagnosis,
+      },
+      step4: {
+        spiritualSymptoms: spiritual.spiritualSymptoms,
+        unusualBehavior: spiritual.unusualBehavior,
+        familyHistory: spiritual.familyHistory,
+        preferredMode: "online",
+        contactTime: "",
+        additionalNotes: "",
+      },
+    };
+    onSubmit(data);
+  }
+
+  const progressPercent = ((subStep - 1) / totalSubSteps) * 100;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <ClipboardList className="h-5 w-5" />
+          Health Assessment Form
+        </CardTitle>
+        <p className="text-sm text-muted-foreground mt-1">
+          Complete this assessment so our practitioners can better understand your condition.
+        </p>
+      </CardHeader>
+      <CardContent>
+        {/* Sub-step labels */}
+        <div className="flex items-center justify-between mb-2">
+          {subStepLabels.map((label, i) => {
+            const stepNum = i + 1;
+            const isActive = subStep === stepNum;
+            const isDone = subStep > stepNum;
+            return (
+              <div key={label} className="flex flex-col items-center flex-1">
+                <div
+                  className={cn(
+                    "h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium transition-all",
+                    isActive && "bg-primary text-primary-foreground ring-4 ring-primary/20",
+                    isDone && "bg-primary text-primary-foreground",
+                    !isActive && !isDone && "bg-muted text-muted-foreground"
+                  )}
+                >
+                  {isDone ? <CheckCircle className="h-4 w-4" /> : stepNum}
+                </div>
+                <span
+                  className={cn(
+                    "mt-1.5 text-xs text-center",
+                    isActive || isDone ? "text-foreground font-medium" : "text-muted-foreground"
+                  )}
+                >
+                  {label}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Progress bar */}
+        <div className="w-full bg-muted rounded-full h-2 mb-6">
+          <div
+            className="bg-primary h-2 rounded-full transition-all duration-300"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+
+        {/* Sub-step 1: Physical Info */}
+        {subStep === 1 && (
+          <div className="space-y-4">
+            <h3 className="font-medium">Physical Health Information</h3>
+            <div>
+              <Label>Select any physical symptoms you experience</Label>
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                {physicalSymptomOpts.map((s) => (
+                  <div key={s} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`asf-ps-${s}`}
+                      checked={physical.physicalSymptoms.includes(s)}
+                      onCheckedChange={() =>
+                        setPhysical({
+                          ...physical,
+                          physicalSymptoms: toggleItem(physical.physicalSymptoms, s),
+                        })
+                      }
+                    />
+                    <Label htmlFor={`asf-ps-${s}`} className="font-normal cursor-pointer text-sm">
+                      {s}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <Label>Please elaborate on your symptoms</Label>
+              <Textarea
+                value={physical.elaboration || ""}
+                onChange={(e) => setPhysical({ ...physical, elaboration: e.target.value })}
+                className="mt-1"
+                rows={3}
+                placeholder="Describe your physical symptoms in more detail..."
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Sub-step 2: Mental Info */}
+        {subStep === 2 && (
+          <div className="space-y-4">
+            <h3 className="font-medium">Mental & Emotional Health Information</h3>
+            <div>
+              <Label>Select any emotional symptoms you experience</Label>
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                {emotionalSymptomOpts.map((s) => (
+                  <div key={s} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`asf-es-${s}`}
+                      checked={mental.emotionalSymptoms.includes(s)}
+                      onCheckedChange={() =>
+                        setMental({
+                          ...mental,
+                          emotionalSymptoms: toggleItem(mental.emotionalSymptoms, s),
+                        })
+                      }
+                    />
+                    <Label htmlFor={`asf-es-${s}`} className="font-normal cursor-pointer text-sm">
+                      {s}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <Label>Share more about your emotional well-being</Label>
+              <Textarea
+                value={mental.emotionalDetails || ""}
+                onChange={(e) => setMental({ ...mental, emotionalDetails: e.target.value })}
+                className="mt-1"
+                rows={2}
+                placeholder="Describe your emotional state..."
+              />
+            </div>
+            <div>
+              <Label>Previous Diagnosis (if any)</Label>
+              <Input
+                value={mental.previousDiagnosis || ""}
+                onChange={(e) => setMental({ ...mental, previousDiagnosis: e.target.value })}
+                className="mt-1"
+                placeholder="Any previous mental health diagnosis..."
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Sub-step 3: Spiritual Info */}
+        {subStep === 3 && (
+          <div className="space-y-4">
+            <h3 className="font-medium">Spiritual Health Information</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label>{t.assessment.step1.prayerLabel}</Label>
+                <Select
+                  value={spiritual.prayerFrequency}
+                  onValueChange={(v) =>
+                    setSpiritual({ ...spiritual, prayerFrequency: v as typeof spiritual.prayerFrequency })
+                  }
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5_times">5 Times Daily</SelectItem>
+                    <SelectItem value="sometimes">Sometimes</SelectItem>
+                    <SelectItem value="rarely">Rarely</SelectItem>
+                    <SelectItem value="never">Never</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>{t.assessment.step1.quranLabel}</Label>
+                <Select
+                  value={spiritual.quranFrequency}
+                  onValueChange={(v) =>
+                    setSpiritual({ ...spiritual, quranFrequency: v as typeof spiritual.quranFrequency })
+                  }
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="daily">Daily</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="rarely">Rarely</SelectItem>
+                    <SelectItem value="never">Never</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <Label>{t.assessment.step1.practicesLabel}</Label>
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                {spiritualPracticeOpts.map((p) => (
+                  <div key={p} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`asf-sp-${p}`}
+                      checked={spiritual.spiritualPractices.includes(p)}
+                      onCheckedChange={() =>
+                        setSpiritual({
+                          ...spiritual,
+                          spiritualPractices: toggleItem(spiritual.spiritualPractices, p),
+                        })
+                      }
+                    />
+                    <Label htmlFor={`asf-sp-${p}`} className="font-normal cursor-pointer text-sm">
+                      {p}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <Label>Select any spiritual symptoms you experience</Label>
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                {spiritualSymptomOpts.map((s) => (
+                  <div key={s} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`asf-ss-${s}`}
+                      checked={spiritual.spiritualSymptoms.includes(s)}
+                      onCheckedChange={() =>
+                        setSpiritual({
+                          ...spiritual,
+                          spiritualSymptoms: toggleItem(spiritual.spiritualSymptoms, s),
+                        })
+                      }
+                    />
+                    <Label htmlFor={`asf-ss-${s}`} className="font-normal cursor-pointer text-sm">
+                      {s}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <Label>Confidential Notes</Label>
+              <Textarea
+                value={spiritual.confidentialNotes || ""}
+                onChange={(e) => setSpiritual({ ...spiritual, confidentialNotes: e.target.value })}
+                className="mt-1"
+                rows={2}
+                placeholder="Any confidential information you'd like to share..."
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Navigation */}
+        <div className="flex gap-3 pt-6">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              if (subStep === 1) onBack();
+              else setSubStep(subStep - 1);
+            }}
+            className="flex-1"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            {t.common.back}
+          </Button>
+          {subStep < totalSubSteps ? (
+            <Button type="button" onClick={() => setSubStep(subStep + 1)} className="flex-1">
+              {t.common.next}
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          ) : (
+            <Button type="button" onClick={handleComplete} className="flex-1">
               <CheckCircle className="mr-2 h-4 w-4" />
               Complete Assessment
             </Button>
