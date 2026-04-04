@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "@/i18n/useTranslation";
 import { toast } from "sonner";
+import { apiClient } from "@/lib/api/client";
+import { ENDPOINTS } from "@/lib/api/endpoints";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,31 +13,35 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { mockServices } from "@/lib/mock/data/services";
 import { formatCurrency } from "@/lib/utils";
-import { Settings, Building, Save } from "lucide-react";
+import type { Service } from "@/types";
+import { Settings, Building, Save, Loader2 } from "lucide-react";
+
+interface ApiSuccess<T> {
+  success: true;
+  data: T;
+}
+
+interface EditableService extends Service {
+  editName: string;
+  editDescription: string;
+  editPrice: number;
+  editIsOnline: boolean;
+  editIsOffline: boolean;
+  editIsActive: boolean;
+  editMinCups: number;
+  editPricePerCup: number;
+  editOnlinePrice: number;
+  editOfflinePrice: number;
+  editOnlineDuration: number;
+  editOfflineDuration: number;
+}
 
 export default function AdminSettingsPage() {
   const { t } = useTranslation();
-
-  // Service states
-  const [services, setServices] = useState(
-    mockServices.map((s) => ({
-      ...s,
-      editName: s.name,
-      editDescription: s.description,
-      editPrice: s.priceBDT,
-      editIsOnline: s.isOnline,
-      editIsOffline: s.isOffline,
-      editIsActive: s.isActive,
-      editMinCups: s.hijamaPricing?.minCups ?? 3,
-      editPricePerCup: s.hijamaPricing?.pricePerCup ?? 200,
-      editOnlinePrice: s.modePricing?.onlinePriceBDT ?? s.priceBDT,
-      editOfflinePrice: s.modePricing?.offlinePriceBDT ?? s.priceBDT,
-      editOnlineDuration: s.modePricing?.onlineDurationMinutes ?? s.durationMinutes,
-      editOfflineDuration: s.modePricing?.offlineDurationMinutes ?? s.durationMinutes,
-    }))
-  );
+  const [services, setServices] = useState<EditableService[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [savingIndex, setSavingIndex] = useState<number | null>(null);
 
   // Center info state
   const [centerInfo, setCenterInfo] = useState({
@@ -44,6 +50,41 @@ export default function AdminSettingsPage() {
     phone: "+880 1234-567890",
     hours: "Saturday - Thursday: 9:00 AM - 9:00 PM",
   });
+
+  const fetchServices = useCallback(async () => {
+    try {
+      const res = await apiClient.get<ApiSuccess<Service[]>>(
+        ENDPOINTS.services.list
+      );
+      if (res.success) {
+        setServices(
+          res.data.map((s) => ({
+            ...s,
+            editName: s.name,
+            editDescription: s.description,
+            editPrice: s.priceBDT,
+            editIsOnline: s.isOnline,
+            editIsOffline: s.isOffline,
+            editIsActive: s.isActive,
+            editMinCups: s.hijamaPricing?.minCups ?? 3,
+            editPricePerCup: s.hijamaPricing?.pricePerCup ?? 200,
+            editOnlinePrice: s.modePricing?.onlinePriceBDT ?? s.priceBDT,
+            editOfflinePrice: s.modePricing?.offlinePriceBDT ?? s.priceBDT,
+            editOnlineDuration: s.modePricing?.onlineDurationMinutes ?? s.durationMinutes,
+            editOfflineDuration: s.modePricing?.offlineDurationMinutes ?? s.durationMinutes,
+          }))
+        );
+      }
+    } catch (err) {
+      console.error("Failed to fetch services:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchServices();
+  }, [fetchServices]);
 
   const updateService = (
     index: number,
@@ -56,6 +97,55 @@ export default function AdminSettingsPage() {
       return updated;
     });
   };
+
+  const handleSaveService = async (index: number) => {
+    const service = services[index];
+    setSavingIndex(index);
+    try {
+      await apiClient.patch<ApiSuccess<Service>>(
+        ENDPOINTS.services.update(service.slug),
+        {
+          name: service.editName,
+          description: service.editDescription,
+          priceBDT: service.editPrice,
+          isOnline: service.editIsOnline,
+          isOffline: service.editIsOffline,
+          isActive: service.editIsActive,
+          hijamaPricing:
+            service.type === "hijama"
+              ? {
+                  minCups: service.editMinCups,
+                  pricePerCup: service.editPricePerCup,
+                }
+              : undefined,
+          modePricing:
+            service.editIsOnline && service.editIsOffline
+              ? {
+                  onlinePriceBDT: service.editOnlinePrice,
+                  offlinePriceBDT: service.editOfflinePrice,
+                  onlineDurationMinutes: service.editOnlineDuration,
+                  offlineDurationMinutes: service.editOfflineDuration,
+                }
+              : undefined,
+        }
+      );
+      toast.success(`${service.editName} settings saved successfully.`);
+      fetchServices();
+    } catch (err) {
+      toast.error(`Failed to save ${service.editName} settings.`);
+      console.error(err);
+    } finally {
+      setSavingIndex(null);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -267,12 +357,15 @@ export default function AdminSettingsPage() {
                 <Button
                   size="sm"
                   className="w-full"
-                  onClick={() => {
-                    toast.success(`${service.editName} settings saved successfully.`);
-                  }}
+                  disabled={savingIndex === index}
+                  onClick={() => handleSaveService(index)}
                 >
-                  <Save className="h-4 w-4 mr-2" />
-                  {t.common.save}
+                  {savingIndex === index ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4 mr-2" />
+                  )}
+                  {savingIndex === index ? "Saving..." : t.common.save}
                 </Button>
               </CardContent>
             </Card>

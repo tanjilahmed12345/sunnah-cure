@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "@/i18n/useTranslation";
+import { apiClient } from "@/lib/api/client";
+import { ENDPOINTS } from "@/lib/api/endpoints";
 import { PageHeader } from "@/components/common/PageHeader";
 import { SearchInput } from "@/components/common/SearchInput";
 import { DataTable, type Column } from "@/components/common/DataTable";
@@ -10,24 +12,42 @@ import { StatusBadge } from "@/components/common/StatusBadge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { mockAssessments } from "@/lib/mock/data/assessments";
-import { mockUsers } from "@/lib/mock/data/users";
 import { formatDate } from "@/lib/utils";
 import type { Assessment } from "@/types";
-import { Eye } from "lucide-react";
+import { Eye, Loader2 } from "lucide-react";
+
+interface ApiSuccess<T> {
+  success: true;
+  data: T;
+}
 
 export default function AdminAssessmentsPage() {
   const { t } = useTranslation();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
+  const [assessments, setAssessments] = useState<Assessment[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const getPatientPhone = (patientId: string) => {
-    return mockUsers.find((u) => u.id === patientId)?.phone || "";
-  };
+  const fetchAssessments = useCallback(async () => {
+    try {
+      const res = await apiClient.get<ApiSuccess<Assessment[]>>(
+        ENDPOINTS.assessments.list
+      );
+      if (res.success) setAssessments(res.data);
+    } catch (err) {
+      console.error("Failed to fetch assessments:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAssessments();
+  }, [fetchAssessments]);
 
   const filteredAssessments = useMemo(() => {
-    let filtered = [...mockAssessments];
+    let filtered = [...assessments];
 
     if (activeTab !== "all") {
       filtered = filtered.filter((a) => a.status === activeTab);
@@ -38,7 +58,6 @@ export default function AdminAssessmentsPage() {
       filtered = filtered.filter(
         (a) =>
           a.patientName.toLowerCase().includes(q) ||
-          getPatientPhone(a.patientId).includes(q) ||
           (a.assignedDoctorName && a.assignedDoctorName.toLowerCase().includes(q))
       );
     }
@@ -47,7 +66,7 @@ export default function AdminAssessmentsPage() {
       (a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
-  }, [activeTab, searchQuery]);
+  }, [activeTab, searchQuery, assessments]);
 
   const columns: Column<Assessment>[] = [
     {
@@ -56,12 +75,6 @@ export default function AdminAssessmentsPage() {
       cell: (item) => (
         <span className="font-medium">{item.patientName}</span>
       ),
-    },
-    {
-      key: "phone",
-      header: t.appointments.phone,
-      cell: (item) => getPatientPhone(item.patientId),
-      hideOnMobile: true,
     },
     {
       key: "date",
@@ -116,6 +129,14 @@ export default function AdminAssessmentsPage() {
       </CardContent>
     </Card>
   );
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div>

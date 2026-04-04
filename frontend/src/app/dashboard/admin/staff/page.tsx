@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { useTranslation } from "@/i18n/useTranslation";
+import { apiClient } from "@/lib/api/client";
+import { ENDPOINTS } from "@/lib/api/endpoints";
 import { PageHeader } from "@/components/common/PageHeader";
 import { StaffAvatar } from "@/components/common/StaffAvatar";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
@@ -38,9 +40,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { addStaffSchema, type AddStaffFormData } from "@/lib/validations/auth";
-import { mockDoctors } from "@/lib/mock/data/doctors";
 import type { DoctorProfile, StaffDesignation } from "@/types";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
+
+interface ApiSuccess<T> {
+  success: true;
+  data: T;
+}
 
 function DesignationBadges({ designations }: { designations: StaffDesignation[] }) {
   return (
@@ -64,7 +70,8 @@ function DesignationBadges({ designations }: { designations: StaffDesignation[] 
 
 export default function AdminStaffPage() {
   const { t } = useTranslation();
-  const [staff, setStaff] = useState<DoctorProfile[]>([...mockDoctors]);
+  const [staff, setStaff] = useState<DoctorProfile[]>([]);
+  const [loading, setLoading] = useState(true);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<DoctorProfile | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -85,6 +92,23 @@ export default function AdminStaffPage() {
       bio: "",
     },
   });
+
+  const fetchStaff = useCallback(async () => {
+    try {
+      const res = await apiClient.get<ApiSuccess<DoctorProfile[]>>(
+        ENDPOINTS.doctors.list
+      );
+      if (res.success) setStaff(res.data);
+    } catch (err) {
+      console.error("Failed to fetch staff:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchStaff();
+  }, [fetchStaff]);
 
   function openAddDialog() {
     form.reset({
@@ -118,71 +142,45 @@ export default function AdminStaffPage() {
     setAddDialogOpen(true);
   }
 
-  function onSubmit(data: AddStaffFormData) {
-    if (editingStaff) {
-      setStaff((prev) =>
-        prev.map((s) =>
-          s.id === editingStaff.id
-            ? {
-                ...s,
-                designations: data.designations as StaffDesignation[],
-                qualifications: data.qualifications || "",
-                experienceYears: data.experienceYears || 0,
-                bio: data.bio || "",
-                user: {
-                  ...s.user,
-                  name: data.name,
-                  phone: data.phone,
-                  gender: data.gender,
-                  age: data.age,
-                  address: data.address || "",
-                },
-              }
-            : s
-        )
-      );
-      toast.success(`${data.name}'s profile updated.`);
-    } else {
-      const newId = `doc-${Date.now()}`;
-      const newStaff: DoctorProfile = {
-        id: newId,
-        userId: `user-${newId}`,
-        user: {
-          id: `user-${newId}`,
-          name: data.name,
-          phone: data.phone,
-          role: "DOCTOR",
-          gender: data.gender,
-          age: data.age,
-          address: data.address || "",
-          avatarUrl: null,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        specialization: data.designations.includes("raqi")
-          ? "ruqyah_therapy"
-          : "hijama_therapy",
-        designations: data.designations as StaffDesignation[],
-        qualifications: data.qualifications || "",
-        experienceYears: data.experienceYears || 0,
-        bio: data.bio || "",
-        approvalStatus: "approved",
-        certificateUrls: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      setStaff((prev) => [...prev, newStaff]);
-      toast.success(`${data.name} added as staff.`);
+  async function onSubmit(data: AddStaffFormData) {
+    try {
+      if (editingStaff) {
+        // For editing, we use the same add endpoint or a dedicated update
+        // Since there's no specific edit endpoint, we'll use PATCH on detail
+        await apiClient.patch<ApiSuccess<DoctorProfile>>(
+          ENDPOINTS.doctors.detail(editingStaff.id),
+          data
+        );
+        toast.success(`${data.name}'s profile updated.`);
+      } else {
+        await apiClient.post<ApiSuccess<DoctorProfile>>(
+          ENDPOINTS.doctors.add,
+          data
+        );
+        toast.success(`${data.name} added as staff.`);
+      }
+      setAddDialogOpen(false);
+      setEditingStaff(null);
+      fetchStaff();
+    } catch (err) {
+      toast.error(editingStaff ? "Failed to update staff." : "Failed to add staff.");
+      console.error(err);
     }
-    setAddDialogOpen(false);
-    setEditingStaff(null);
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!selectedStaff) return;
-    setStaff((prev) => prev.filter((s) => s.id !== selectedStaff.id));
-    toast.success(`${selectedStaff.user.name} removed from staff.`);
-    setSelectedStaff(null);
+    try {
+      await apiClient.delete<ApiSuccess<void>>(
+        ENDPOINTS.doctors.delete(selectedStaff.id)
+      );
+      toast.success(`${selectedStaff.user.name} removed from staff.`);
+      setSelectedStaff(null);
+      fetchStaff();
+    } catch (err) {
+      toast.error("Failed to remove staff.");
+      console.error(err);
+    }
   }
 
   const columns: Column<DoctorProfile>[] = [
@@ -291,6 +289,14 @@ export default function AdminStaffPage() {
       </CardContent>
     </Card>
   );
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div>

@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/i18n/useTranslation";
 import { mockTestimonials } from "@/lib/mock/data/testimonials";
+import type { Testimonial } from "@/types";
 import { Star, Quote, Filter } from "lucide-react";
 import { cn } from "@/lib/utils";
 

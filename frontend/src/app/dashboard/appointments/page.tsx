@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "@/i18n/useTranslation";
-import { mockCurrentUser } from "@/lib/mock/data/users";
-import { mockAppointments } from "@/lib/mock/data/appointments";
+import { useAuth } from "@/contexts/AuthContext";
+import { apiClient } from "@/lib/api/client";
+import { ENDPOINTS } from "@/lib/api/endpoints";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import { AppointmentCard } from "@/components/common/AppointmentCard";
@@ -19,19 +20,29 @@ import type { Appointment, AppointmentStatus } from "@/types";
 
 type TabValue = "all" | AppointmentStatus;
 
+interface ApiSuccess<T> { success: true; data: T; }
+
 export default function MyAppointmentsPage() {
   const { t } = useTranslation();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabValue>("all");
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const userAppointments = mockAppointments.filter(
-    (a) => a.patientId === mockCurrentUser.id
-  );
+  useEffect(() => {
+    async function fetchAppointments() {
+      try {
+        const res = await apiClient.get<ApiSuccess<Appointment[]>>(ENDPOINTS.appointments.list);
+        if (res.success) setAppointments(res.data);
+      } catch { /* ignore */ } finally { setLoading(false); }
+    }
+    fetchAppointments();
+  }, []);
 
   const filteredAppointments =
     activeTab === "all"
-      ? userAppointments
-      : userAppointments.filter((a) => a.status === activeTab);
+      ? appointments
+      : appointments.filter((a) => a.status === activeTab);
 
   const columns: Column<Appointment>[] = [
     {
@@ -116,7 +127,9 @@ export default function MyAppointmentsPage() {
         </TabsList>
       </Tabs>
 
-      {filteredAppointments.length === 0 ? (
+      {loading ? (
+        <p className="text-sm text-muted-foreground">Loading...</p>
+      ) : filteredAppointments.length === 0 ? (
         <EmptyState
           title={t.appointments.noAppointments}
           actionLabel={t.appointments.bookNew}

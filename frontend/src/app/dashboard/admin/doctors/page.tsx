@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "@/i18n/useTranslation";
 import { toast } from "sonner";
+import { apiClient } from "@/lib/api/client";
+import { ENDPOINTS } from "@/lib/api/endpoints";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
@@ -11,9 +13,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { mockDoctors } from "@/lib/mock/data/doctors";
 import type { DoctorProfile } from "@/types";
-import { Eye, Check, X } from "lucide-react";
+import { Eye, Check, X, Loader2 } from "lucide-react";
+
+interface ApiSuccess<T> {
+  success: true;
+  data: T;
+}
 
 export default function AdminDoctorsPage() {
   const { t } = useTranslation();
@@ -23,7 +29,25 @@ export default function AdminDoctorsPage() {
   const [selectedDoctor, setSelectedDoctor] = useState<DoctorProfile | null>(
     null
   );
-  const [doctors, setDoctors] = useState<DoctorProfile[]>([...mockDoctors]);
+  const [doctors, setDoctors] = useState<DoctorProfile[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchDoctors = useCallback(async () => {
+    try {
+      const res = await apiClient.get<ApiSuccess<DoctorProfile[]>>(
+        ENDPOINTS.doctors.list
+      );
+      if (res.success) setDoctors(res.data);
+    } catch (err) {
+      console.error("Failed to fetch doctors:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDoctors();
+  }, [fetchDoctors]);
 
   const approvedDoctors = doctors.filter(
     (d) => d.approvalStatus === "approved"
@@ -213,6 +237,14 @@ export default function AdminDoctorsPage() {
     </Card>
   );
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
     <div>
       <PageHeader title={t.dashboard.sidebar.doctors} />
@@ -251,16 +283,18 @@ export default function AdminDoctorsPage() {
         title="Approve Doctor"
         description={`Are you sure you want to approve ${selectedDoctor?.user.name}?`}
         confirmLabel={t.appointments.approve}
-        onConfirm={() => {
+        onConfirm={async () => {
           if (selectedDoctor) {
-            setDoctors((prev) =>
-              prev.map((d) =>
-                d.id === selectedDoctor.id
-                  ? { ...d, approvalStatus: "approved" as const }
-                  : d
-              )
-            );
-            toast.success(`${selectedDoctor.user.name} has been approved.`);
+            try {
+              await apiClient.patch<ApiSuccess<DoctorProfile>>(
+                ENDPOINTS.doctors.approve(selectedDoctor.id)
+              );
+              toast.success(`${selectedDoctor.user.name} has been approved.`);
+              fetchDoctors();
+            } catch (err) {
+              toast.error("Failed to approve doctor.");
+              console.error(err);
+            }
           }
           setSelectedDoctor(null);
         }}
@@ -274,16 +308,18 @@ export default function AdminDoctorsPage() {
         description={`Are you sure you want to reject ${selectedDoctor?.user.name}'s application?`}
         confirmLabel={t.appointments.reject}
         variant="destructive"
-        onConfirm={() => {
+        onConfirm={async () => {
           if (selectedDoctor) {
-            setDoctors((prev) =>
-              prev.map((d) =>
-                d.id === selectedDoctor.id
-                  ? { ...d, approvalStatus: "rejected" as const }
-                  : d
-              )
-            );
-            toast.success(`${selectedDoctor.user.name}'s application has been rejected.`);
+            try {
+              await apiClient.patch<ApiSuccess<DoctorProfile>>(
+                ENDPOINTS.doctors.reject(selectedDoctor.id)
+              );
+              toast.success(`${selectedDoctor.user.name}'s application has been rejected.`);
+              fetchDoctors();
+            } catch (err) {
+              toast.error("Failed to reject doctor.");
+              console.error(err);
+            }
           }
           setSelectedDoctor(null);
         }}

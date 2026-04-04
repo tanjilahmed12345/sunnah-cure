@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod/v4";
 import { toast } from "sonner";
 import { useTranslation } from "@/i18n/useTranslation";
 import { useAuth } from "@/contexts/AuthContext";
-import { mockDoctors } from "@/lib/mock/data/doctors";
+import { apiClient } from "@/lib/api/client";
+import { ENDPOINTS } from "@/lib/api/endpoints";
 import { PageHeader } from "@/components/common/PageHeader";
 import { StaffAvatar } from "@/components/common/StaffAvatar";
 import {
@@ -36,7 +37,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Upload } from "lucide-react";
-import type { StaffDesignation } from "@/types";
+import type { DoctorProfile, StaffDesignation } from "@/types";
+
+interface ApiSuccess<T> {
+  success: true;
+  data: T;
+}
 
 const profileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -58,14 +64,31 @@ type StaffProfileFormData = z.infer<typeof staffProfileSchema>;
 
 export default function ProfilePage() {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [isProfileLoading, setIsProfileLoading] = useState(false);
   const [isStaffLoading, setIsStaffLoading] = useState(false);
+  const [staffProfile, setStaffProfile] = useState<DoctorProfile | null>(null);
+  const [isLoadingStaff, setIsLoadingStaff] = useState(false);
 
   const isStaff = user?.role === "DOCTOR";
-  const staffProfile = isStaff
-    ? mockDoctors.find((d) => d.userId === user?.id) || mockDoctors[0]
-    : null;
+
+  useEffect(() => {
+    if (!isStaff || !user?.id) return;
+    async function fetchStaffProfile() {
+      setIsLoadingStaff(true);
+      try {
+        const res = await apiClient.get<ApiSuccess<DoctorProfile>>(
+          ENDPOINTS.doctors.detail(user!.id)
+        );
+        setStaffProfile(res.data);
+      } catch {
+        setStaffProfile(null);
+      } finally {
+        setIsLoadingStaff(false);
+      }
+    }
+    fetchStaffProfile();
+  }, [isStaff, user?.id]);
 
   const profileForm = useForm<ProfileFormData>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -88,22 +111,53 @@ export default function ProfilePage() {
     },
   });
 
+  // Reset staff form when staffProfile loads
+  useEffect(() => {
+    if (staffProfile) {
+      staffForm.reset({
+        qualifications: staffProfile.qualifications || "",
+        bio: staffProfile.bio || "",
+      });
+    }
+  }, [staffProfile, staffForm]);
+
   async function onProfileSubmit(data: ProfileFormData) {
     setIsProfileLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsProfileLoading(false);
-    toast.success(t.common.success);
+    try {
+      await apiClient.patch<ApiSuccess<unknown>>(ENDPOINTS.auth.me, data);
+      await refreshUser();
+      toast.success(t.common.success);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update profile"
+      );
+    } finally {
+      setIsProfileLoading(false);
+    }
   }
 
   async function onStaffSubmit(data: StaffProfileFormData) {
+    if (!user?.id) return;
     setIsStaffLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsStaffLoading(false);
-    toast.success("Professional info updated.");
+    try {
+      const res = await apiClient.patch<ApiSuccess<DoctorProfile>>(
+        ENDPOINTS.doctors.detail(user.id),
+        data
+      );
+      setStaffProfile(res.data);
+      toast.success("Professional info updated.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to update professional info"
+      );
+    } finally {
+      setIsStaffLoading(false);
+    }
   }
 
   function handlePhotoUpload() {
-    // Mock: In real app, this would open a file picker and upload
     toast.success("Profile picture updated. (Demo)");
   }
 
@@ -115,7 +169,13 @@ export default function ProfilePage() {
 
       <div className="space-y-6 max-w-2xl">
         {/* Profile Picture (Staff only) */}
-        {isStaff && staffProfile && (
+        {isStaff && (isLoadingStaff ? (
+          <Card>
+            <CardContent className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </CardContent>
+          </Card>
+        ) : staffProfile && (
           <Card>
             <CardHeader>
               <CardTitle>Profile Picture</CardTitle>
@@ -144,7 +204,7 @@ export default function ProfilePage() {
               </div>
             </CardContent>
           </Card>
-        )}
+        ))}
 
         {/* Personal Information */}
         <Card>

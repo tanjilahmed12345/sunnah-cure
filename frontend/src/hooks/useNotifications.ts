@@ -1,23 +1,56 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import type { Notification } from "@/types";
-import { mockNotifications } from "@/lib/mock/data/notifications";
+import { apiClient } from "@/lib/api/client";
+import { ENDPOINTS } from "@/lib/api/endpoints";
+
+interface ApiSuccess<T> {
+  success: true;
+  data: T;
+}
 
 export function useNotifications() {
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
-  const markAsRead = useCallback((id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
-    );
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const res = await apiClient.get<ApiSuccess<Notification[]>>(
+        ENDPOINTS.notifications.list
+      );
+      if (res.success) {
+        setNotifications(res.data);
+      }
+    } catch {
+      // silently fail if not authenticated
+    }
   }, []);
 
-  const markAllAsRead = useCallback(() => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
+
+  const markAsRead = useCallback(async (id: string) => {
+    try {
+      await apiClient.patch(ENDPOINTS.notifications.markRead(id));
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
+      );
+    } catch {
+      // ignore
+    }
   }, []);
 
-  return { notifications, unreadCount, markAsRead, markAllAsRead };
+  const markAllAsRead = useCallback(async () => {
+    try {
+      await apiClient.post(ENDPOINTS.notifications.markAllRead);
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  return { notifications, unreadCount, markAsRead, markAllAsRead, refetch: fetchNotifications };
 }

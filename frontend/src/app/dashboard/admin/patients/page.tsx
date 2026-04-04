@@ -1,33 +1,49 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "@/i18n/useTranslation";
+import { apiClient } from "@/lib/api/client";
+import { ENDPOINTS } from "@/lib/api/endpoints";
 import { PageHeader } from "@/components/common/PageHeader";
 import { SearchInput } from "@/components/common/SearchInput";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import { Card, CardContent } from "@/components/ui/card";
-import { mockUsers } from "@/lib/mock/data/users";
 import { formatDate } from "@/lib/utils";
 import type { User } from "@/types";
+import { Loader2 } from "lucide-react";
+
+interface ApiSuccess<T> {
+  success: true;
+  data: T;
+}
 
 export default function AdminPatientsPage() {
   const { t } = useTranslation();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
+  const [patients, setPatients] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const patients = mockUsers.filter((u) => u.role === "PATIENT");
+  const fetchPatients = useCallback(async () => {
+    try {
+      const params: Record<string, string> = {};
+      if (searchQuery) params.search = searchQuery;
+      const res = await apiClient.get<ApiSuccess<User[]>>(
+        ENDPOINTS.patients.list,
+        params
+      );
+      if (res.success) setPatients(res.data);
+    } catch (err) {
+      console.error("Failed to fetch patients:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [searchQuery]);
 
-  const filteredPatients = useMemo(() => {
-    if (!searchQuery) return patients;
-    const q = searchQuery.toLowerCase();
-    return patients.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        p.phone.includes(q) ||
-        p.address.toLowerCase().includes(q)
-    );
-  }, [searchQuery, patients]);
+  useEffect(() => {
+    fetchPatients();
+  }, [fetchPatients]);
 
   const handleSearch = useCallback((query: string) => {
     setSearchQuery(query);
@@ -87,6 +103,14 @@ export default function AdminPatientsPage() {
     </Card>
   );
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
     <div>
       <PageHeader title={t.dashboard.sidebar.patients} />
@@ -100,7 +124,7 @@ export default function AdminPatientsPage() {
       </div>
 
       <DataTable
-        data={filteredPatients}
+        data={patients}
         columns={columns}
         onRowClick={(item) =>
           router.push(`/dashboard/admin/patients/${item.id}`)

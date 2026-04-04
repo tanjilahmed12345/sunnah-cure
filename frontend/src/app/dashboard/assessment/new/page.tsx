@@ -6,6 +6,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { useTranslation } from "@/i18n/useTranslation";
+import { apiClient } from "@/lib/api/client";
+import { ENDPOINTS } from "@/lib/api/endpoints";
+import type { Assessment } from "@/types";
 import {
   assessmentStep1Schema,
   assessmentStep2Schema,
@@ -48,6 +51,11 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, ArrowRight, Loader2, CheckCircle } from "lucide-react";
 
+interface ApiSuccess<T> {
+  success: true;
+  data: T;
+}
+
 export default function NewAssessmentPage() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -70,10 +78,26 @@ export default function NewAssessmentPage() {
 
   async function handleFinalSubmit(data: AssessmentStep4Data) {
     setIsSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setIsSubmitting(false);
-    setIsSuccess(true);
-    toast.success(t.assessment.assessmentSuccess);
+    try {
+      const formData = {
+        step1: step1Data!,
+        step2: step2Data!,
+        step3: step3Data!,
+        step4: data,
+      };
+      await apiClient.post<ApiSuccess<Assessment>>(
+        ENDPOINTS.assessments.create,
+        { formData }
+      );
+      setIsSuccess(true);
+      toast.success(t.assessment.assessmentSuccess);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to submit assessment"
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   if (isSuccess) {

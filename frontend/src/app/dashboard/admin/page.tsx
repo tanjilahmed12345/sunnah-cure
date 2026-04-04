@@ -1,18 +1,16 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "@/i18n/useTranslation";
+import { apiClient } from "@/lib/api/client";
+import { ENDPOINTS } from "@/lib/api/endpoints";
 import { PageHeader } from "@/components/common/PageHeader";
 import { StatCard } from "@/components/common/StatCard";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { mockAppointments } from "@/lib/mock/data/appointments";
-import { mockAssessments } from "@/lib/mock/data/assessments";
-import { mockUsers } from "@/lib/mock/data/users";
-import { mockDoctors } from "@/lib/mock/data/doctors";
 import { formatDate } from "@/lib/utils";
 import type { Appointment } from "@/types";
 import {
@@ -22,7 +20,24 @@ import {
   UserCheck,
   ClipboardList,
   BarChart3,
+  Loader2,
 } from "lucide-react";
+
+interface ApiSuccess<T> {
+  success: true;
+  data: T;
+}
+
+interface AdminStats {
+  totalPatients: number;
+  totalAppointments: number;
+  todayAppointments: number;
+  pendingCount: number;
+  completionRate: number;
+  totalRevenue: number;
+  totalStaff: number;
+  totalAssessments: number;
+}
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-yellow-500",
@@ -35,24 +50,38 @@ const STATUS_COLORS: Record<string, string> = {
 export default function AdminDashboardPage() {
   const { t } = useTranslation();
   const router = useRouter();
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const patients = mockUsers.filter((u) => u.role === "PATIENT");
-  const pendingAppointments = mockAppointments.filter(
-    (a) => a.status === "pending"
-  );
-  const todayAppointments = mockAppointments.filter(
-    (a) => a.scheduledDate === new Date().toISOString().split("T")[0]
-  );
-  const totalStaff = mockDoctors.filter(
-    (d) => d.approvalStatus === "approved"
-  );
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [statsRes, appointmentsRes] = await Promise.all([
+          apiClient.get<ApiSuccess<AdminStats>>(ENDPOINTS.admin.stats),
+          apiClient.get<ApiSuccess<Appointment[]>>(ENDPOINTS.appointments.list),
+        ]);
+        if (statsRes.success) setStats(statsRes.data);
+        if (appointmentsRes.success) setAppointments(appointmentsRes.data);
+      } catch (err) {
+        console.error("Failed to fetch dashboard data:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
 
-  const recentAppointments = [...mockAppointments]
-    .sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    )
-    .slice(0, 10);
+  const recentAppointments = useMemo(
+    () =>
+      [...appointments]
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        )
+        .slice(0, 10),
+    [appointments]
+  );
 
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = {
@@ -62,27 +91,30 @@ export default function AdminDashboardPage() {
       cancelled: 0,
       rejected: 0,
     };
-    mockAppointments.forEach((a) => {
+    appointments.forEach((a) => {
       counts[a.status] = (counts[a.status] || 0) + 1;
     });
     return counts;
-  }, []);
+  }, [appointments]);
 
   const maxCount = useMemo(
     () => Math.max(...Object.values(statusCounts), 1),
     [statusCounts]
   );
 
-  const getPatientName = useCallback((patientId: string) => {
-    return mockUsers.find((u) => u.id === patientId)?.name || "Unknown";
-  }, []);
+  const getPatientName = useCallback(
+    (item: Appointment) => {
+      return item.patient?.name || "Unknown";
+    },
+    []
+  );
 
   const columns: Column<Appointment>[] = [
     {
       key: "patient",
       header: t.appointments.patient,
       cell: (item) => (
-        <span className="font-medium">{getPatientName(item.patientId)}</span>
+        <span className="font-medium">{getPatientName(item)}</span>
       ),
     },
     {
@@ -94,9 +126,7 @@ export default function AdminDashboardPage() {
     {
       key: "mode",
       header: t.appointments.mode,
-      cell: (item) => (
-        <StatusBadge status={item.mode} />
-      ),
+      cell: (item) => <StatusBadge status={item.mode} />,
       hideOnMobile: true,
     },
     {
@@ -131,6 +161,14 @@ export default function AdminDashboardPage() {
     },
   ];
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
     <div>
       <PageHeader
@@ -138,35 +176,35 @@ export default function AdminDashboardPage() {
         description={`${t.dashboard.patient.welcome}, Admin`}
       />
 
-      {/* Stat Cards — clickable */}
+      {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         <StatCard
           label={t.dashboard.admin.totalPatients}
-          value={patients.length}
+          value={stats?.totalPatients ?? 0}
           icon={Users}
           href="/dashboard/admin/patients"
         />
         <StatCard
           label={t.dashboard.admin.todayAppointments}
-          value={todayAppointments.length}
+          value={stats?.todayAppointments ?? 0}
           icon={CalendarCheck}
           href="/dashboard/admin/appointments?filter=today"
         />
         <StatCard
           label={t.dashboard.admin.pendingAppointments}
-          value={pendingAppointments.length}
+          value={stats?.pendingCount ?? 0}
           icon={Clock}
           href="/dashboard/admin/appointments?filter=pending"
         />
         <StatCard
           label="Total Staff"
-          value={totalStaff.length}
+          value={stats?.totalStaff ?? 0}
           icon={UserCheck}
           href="/dashboard/admin/staff"
         />
         <StatCard
           label={t.dashboard.admin.totalAssessments}
-          value={mockAssessments.length}
+          value={stats?.totalAssessments ?? 0}
           icon={ClipboardList}
           href="/dashboard/admin/assessments"
         />
@@ -231,7 +269,7 @@ export default function AdminDashboardPage() {
                 ))}
               </div>
               <p className="text-xs text-muted-foreground text-center mt-4">
-                Total: {mockAppointments.length} appointments
+                Total: {stats?.totalAppointments ?? appointments.length} appointments
               </p>
             </CardContent>
           </Card>

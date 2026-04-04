@@ -1,23 +1,26 @@
 "use client";
 
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslation } from "@/i18n/useTranslation";
+import { apiClient } from "@/lib/api/client";
+import { ENDPOINTS } from "@/lib/api/endpoints";
 import { PageHeader } from "@/components/common/PageHeader";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { PaymentStatusBadge } from "@/components/common/PaymentStatusBadge";
 import { EmptyState } from "@/components/common/EmptyState";
 import { DataTable, type Column } from "@/components/common/DataTable";
-import { MessageBubble } from "@/components/common/MessageBubble";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { mockUsers } from "@/lib/mock/data/users";
-import { mockAppointments } from "@/lib/mock/data/appointments";
-import { mockAssessments } from "@/lib/mock/data/assessments";
-import { mockMessages } from "@/lib/mock/data/messages";
 import { formatDate, formatCurrency } from "@/lib/utils";
-import type { Appointment, Assessment } from "@/types";
-import { ArrowLeft, User, Phone, MapPin, Calendar } from "lucide-react";
+import type { Appointment, Assessment, User } from "@/types";
+import { ArrowLeft, User as UserIcon, Phone, MapPin, Calendar, Loader2 } from "lucide-react";
+
+interface ApiSuccess<T> {
+  success: true;
+  data: T;
+}
 
 export default function AdminPatientDetailPage() {
   const { t } = useTranslation();
@@ -25,22 +28,55 @@ export default function AdminPatientDetailPage() {
   const params = useParams();
   const id = params.id as string;
 
-  const patient = mockUsers.find((u) => u.id === id);
-  const patientAppointments = mockAppointments
-    .filter((a) => a.patientId === id)
-    .sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  const [patient, setPatient] = useState<User | null>(null);
+  const [patientAppointments, setPatientAppointments] = useState<Appointment[]>([]);
+  const [patientAssessments, setPatientAssessments] = useState<Assessment[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchData = useCallback(async () => {
+    try {
+      const [patientRes, appointmentsRes, assessmentsRes] = await Promise.all([
+        apiClient.get<ApiSuccess<User>>(ENDPOINTS.patients.detail(id)),
+        apiClient.get<ApiSuccess<Appointment[]>>(ENDPOINTS.appointments.list),
+        apiClient.get<ApiSuccess<Assessment[]>>(ENDPOINTS.assessments.list),
+      ]);
+      if (patientRes.success) setPatient(patientRes.data);
+      if (appointmentsRes.success) {
+        const filtered = appointmentsRes.data
+          .filter((a) => a.patientId === id)
+          .sort(
+            (a, b) =>
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+        setPatientAppointments(filtered);
+      }
+      if (assessmentsRes.success) {
+        const filtered = assessmentsRes.data
+          .filter((a) => a.patientId === id)
+          .sort(
+            (a, b) =>
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+        setPatientAssessments(filtered);
+      }
+    } catch (err) {
+      console.error("Failed to fetch patient data:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
     );
-  const patientAssessments = mockAssessments
-    .filter((a) => a.patientId === id)
-    .sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-  const patientMessages = mockMessages.filter(
-    (m) => m.senderId === id || m.conversationId === "conv-1"
-  );
+  }
 
   if (!patient) {
     return (
@@ -157,7 +193,7 @@ export default function AdminPatientDetailPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="flex items-center gap-3">
               <div className="rounded-full bg-primary/10 p-2">
-                <User className="h-5 w-5 text-primary" />
+                <UserIcon className="h-5 w-5 text-primary" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Name</p>
@@ -212,9 +248,6 @@ export default function AdminPatientDetailPage() {
           <TabsTrigger value="assessments">
             {t.dashboard.sidebar.assessments} ({patientAssessments.length})
           </TabsTrigger>
-          <TabsTrigger value="messages">
-            {t.messages.title} ({patientMessages.length})
-          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="appointments">
@@ -242,26 +275,6 @@ export default function AdminPatientDetailPage() {
                 router.push(`/dashboard/admin/assessments/${item.id}`)
               }
             />
-          )}
-        </TabsContent>
-
-        <TabsContent value="messages">
-          {patientMessages.length === 0 ? (
-            <EmptyState title={t.messages.noMessages} />
-          ) : (
-            <Card>
-              <CardContent className="p-4">
-                <div className="space-y-1">
-                  {patientMessages.map((msg) => (
-                    <MessageBubble
-                      key={msg.id}
-                      message={msg}
-                      isOwn={msg.senderRole === "ADMIN"}
-                    />
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
           )}
         </TabsContent>
       </Tabs>

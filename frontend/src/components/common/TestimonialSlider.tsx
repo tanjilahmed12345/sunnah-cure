@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Star, ChevronLeft, ChevronRight, Quote } from "lucide-react";
 import { useTranslation } from "@/i18n/useTranslation";
 import { cn } from "@/lib/utils";
-import type { Testimonial } from "@/lib/mock/data/testimonials";
+import type { Testimonial } from "@/types";
 
 interface TestimonialSliderProps {
   testimonials: Testimonial[];

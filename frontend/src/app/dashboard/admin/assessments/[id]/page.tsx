@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslation } from "@/i18n/useTranslation";
 import { toast } from "sonner";
+import { apiClient } from "@/lib/api/client";
+import { ENDPOINTS } from "@/lib/api/endpoints";
 import { PageHeader } from "@/components/common/PageHeader";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -22,11 +24,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { mockAssessments } from "@/lib/mock/data/assessments";
-import { mockDoctors } from "@/lib/mock/data/doctors";
 import { formatDate } from "@/lib/utils";
-import { ArrowLeft, CalendarPlus, Pencil, Save, X } from "lucide-react";
-import type { AssessmentFormData } from "@/types";
+import { ArrowLeft, CalendarPlus, Pencil, Save, X, Loader2 } from "lucide-react";
+import type { Assessment, DoctorProfile, AssessmentFormData } from "@/types";
+
+interface ApiSuccess<T> {
+  success: true;
+  data: T;
+}
 
 export default function AdminAssessmentDetailPage() {
   const { t } = useTranslation();
@@ -34,38 +39,93 @@ export default function AdminAssessmentDetailPage() {
   const params = useParams();
   const id = params.id as string;
 
-  const assessment = mockAssessments.find((a) => a.id === id);
-  const approvedDoctors = mockDoctors.filter(
-    (d) => d.approvalStatus === "approved"
-  );
+  const [assessment, setAssessment] = useState<Assessment | null>(null);
+  const [doctors, setDoctors] = useState<DoctorProfile[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [status, setStatus] = useState(assessment?.status || "pending");
-  const [assignedDoctor, setAssignedDoctor] = useState(
-    assessment?.assignedDoctorId || ""
-  );
-  const [adminNotes, setAdminNotes] = useState(assessment?.adminNotes || "");
+  const [status, setStatus] = useState("");
+  const [assignedDoctor, setAssignedDoctor] = useState("");
+  const [adminNotes, setAdminNotes] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState<AssessmentFormData | null>(
-    assessment ? { ...assessment.formData } : null
-  );
+  const [formData, setFormData] = useState<AssessmentFormData | null>(null);
 
-  const handleSave = () => {
+  const fetchData = useCallback(async () => {
+    try {
+      const [assessmentRes, doctorsRes] = await Promise.all([
+        apiClient.get<ApiSuccess<Assessment>>(ENDPOINTS.assessments.detail(id)),
+        apiClient.get<ApiSuccess<DoctorProfile[]>>(ENDPOINTS.doctors.list),
+      ]);
+      if (assessmentRes.success) {
+        const a = assessmentRes.data;
+        setAssessment(a);
+        setStatus(a.status || "pending");
+        setAssignedDoctor(a.assignedDoctorId || "");
+        setAdminNotes(a.adminNotes || "");
+        setFormData({ ...a.formData });
+      }
+      if (doctorsRes.success) {
+        setDoctors(doctorsRes.data.filter((d) => d.approvalStatus === "approved"));
+      }
+    } catch (err) {
+      console.error("Failed to fetch assessment:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleSave = async () => {
+    if (!assessment) return;
     setIsSaving(true);
-    setTimeout(() => {
-      setIsSaving(false);
+    try {
+      await apiClient.patch<ApiSuccess<Assessment>>(
+        ENDPOINTS.assessments.update(id),
+        {
+          assignedDoctorId: assignedDoctor || undefined,
+          status,
+          adminNotes: adminNotes || undefined,
+        }
+      );
       toast.success("Assessment updated successfully.");
-    }, 500);
+      fetchData();
+    } catch (err) {
+      toast.error("Failed to update assessment.");
+      console.error(err);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleSaveFormData = () => {
+  const handleSaveFormData = async () => {
+    if (!assessment || !formData) return;
     setIsSaving(true);
-    setTimeout(() => {
-      setIsSaving(false);
-      setIsEditing(false);
+    try {
+      await apiClient.patch<ApiSuccess<Assessment>>(
+        ENDPOINTS.assessments.update(id),
+        { formData }
+      );
       toast.success("Assessment form data updated successfully.");
-    }, 500);
+      setIsEditing(false);
+      fetchData();
+    } catch (err) {
+      toast.error("Failed to update form data.");
+      console.error(err);
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   if (!assessment || !formData) {
     return (
@@ -678,7 +738,7 @@ export default function AdminAssessmentDetailPage() {
                     <SelectValue placeholder={t.appointments.assignDoctor} />
                   </SelectTrigger>
                   <SelectContent>
-                    {approvedDoctors.map((doc) => (
+                    {doctors.map((doc) => (
                       <SelectItem key={doc.id} value={doc.id}>
                         {doc.user.name} ({doc.specialization.replace("_", " ")})
                       </SelectItem>

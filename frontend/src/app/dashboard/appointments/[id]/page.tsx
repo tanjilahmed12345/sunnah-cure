@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslation } from "@/i18n/useTranslation";
-import { mockAppointments } from "@/lib/mock/data/appointments";
-import { mockMessages } from "@/lib/mock/data/messages";
-import { mockCurrentUser } from "@/lib/mock/data/users";
+import { useAuth } from "@/contexts/AuthContext";
+import { apiClient } from "@/lib/api/client";
+import { ENDPOINTS } from "@/lib/api/endpoints";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { PaymentStatusBadge } from "@/components/common/PaymentStatusBadge";
 import { MessageBubble } from "@/components/common/MessageBubble";
@@ -26,47 +26,138 @@ import {
   Calendar,
   Clock,
   CreditCard,
+  Loader2,
   MapPin,
   Send,
   User,
   X,
 } from "lucide-react";
+import type { Appointment, Message } from "@/types";
 import type { HijamaData, RuqyahData, CounselingData } from "@/types";
+
+interface ApiSuccess<T> {
+  success: true;
+  data: T;
+}
+
+interface Conversation {
+  id: string;
+  appointmentId?: string;
+  messages?: Message[];
+}
 
 export default function AppointmentDetailPage() {
   const { t } = useTranslation();
   const params = useParams();
   const router = useRouter();
+  const { user } = useAuth();
   const [cancelOpen, setCancelOpen] = useState(false);
   const [message, setMessage] = useState("");
 
-  const appointment = mockAppointments.find((a) => a.id === params.id);
+  const [appointment, setAppointment] = useState<Appointment | null>(null);
+  const [appointmentMessages, setAppointmentMessages] = useState<Message[]>([]);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isSending, setIsSending] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
 
-  if (!appointment) {
+  const fetchData = useCallback(async () => {
+    if (!params.id) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const appointmentRes = await apiClient.get<ApiSuccess<Appointment>>(
+        ENDPOINTS.appointments.detail(params.id as string)
+      );
+      setAppointment(appointmentRes.data);
+
+      // Fetch conversations and find the one for this appointment
+      try {
+        const convRes = await apiClient.get<ApiSuccess<Conversation[]>>(
+          ENDPOINTS.messages.conversations
+        );
+        const conv = convRes.data.find(
+          (c) => c.appointmentId === params.id
+        );
+        if (conv) {
+          setConversationId(conv.id);
+          // Fetch messages for this conversation
+          const msgRes = await apiClient.get<ApiSuccess<Message[]>>(
+            ENDPOINTS.messages.messages(conv.id)
+          );
+          setAppointmentMessages(msgRes.data);
+        }
+      } catch {
+        // Conversations may not exist yet, that's fine
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load appointment");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [params.id]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">{t.common.noResults}</p>
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
-  const appointmentMessages = mockMessages.filter(
-    (m) => m.conversationId === "conv-1"
-  );
+  if (error || !appointment) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">{error || t.common.noResults}</p>
+      </div>
+    );
+  }
 
   const canPay = appointment.paymentStatus === "unpaid";
   const canCancel =
     appointment.status === "pending" || appointment.status === "approved";
 
-  function handleCancel() {
-    toast.success(t.appointments.cancelAppointment);
-    router.push("/dashboard/appointments");
+  async function handleCancel() {
+    setIsCancelling(true);
+    try {
+      await apiClient.post(ENDPOINTS.appointments.cancel(params.id as string));
+      toast.success(t.appointments.cancelAppointment);
+      router.push("/dashboard/appointments");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to cancel appointment");
+    } finally {
+      setIsCancelling(false);
+    }
   }
 
-  function handleSendMessage() {
+  async function handleSendMessage() {
     if (!message.trim()) return;
-    toast.success(t.messages.send);
-    setMessage("");
+    if (!conversationId) {
+      toast.error("No conversation found for this appointment.");
+      return;
+    }
+    setIsSending(true);
+    try {
+      await apiClient.post(ENDPOINTS.messages.send(conversationId), {
+        content: message.trim(),
+      });
+      toast.success(t.messages.send);
+      setMessage("");
+      // Refresh messages
+      const msgRes = await apiClient.get<ApiSuccess<Message[]>>(
+        ENDPOINTS.messages.messages(conversationId)
+      );
+      setAppointmentMessages(msgRes.data);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to send message");
+    } finally {
+      setIsSending(false);
+    }
   }
 
   function renderServiceData() {
@@ -256,7 +347,7 @@ export default function AppointmentDetailPage() {
                     <MessageBubble
                       key={msg.id}
                       message={msg}
-                      isOwn={msg.senderId === mockCurrentUser.id}
+                      isOwn={msg.senderId === user?.id}
                     />
                   ))
                 )}
@@ -269,9 +360,14 @@ export default function AppointmentDetailPage() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter") handleSendMessage();
                   }}
+                  disabled={isSending}
                 />
-                <Button size="icon" onClick={handleSendMessage}>
-                  <Send className="h-4 w-4" />
+                <Button size="icon" onClick={handleSendMessage} disabled={isSending}>
+                  {isSending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
             </CardContent>
@@ -296,8 +392,13 @@ export default function AppointmentDetailPage() {
               className="w-full"
               size="lg"
               onClick={() => setCancelOpen(true)}
+              disabled={isCancelling}
             >
-              <X className="mr-2 h-4 w-4" />
+              {isCancelling ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <X className="mr-2 h-4 w-4" />
+              )}
               {t.appointments.cancelAppointment}
             </Button>
           )}

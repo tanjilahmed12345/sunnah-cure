@@ -1,11 +1,11 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useTranslation } from "@/i18n/useTranslation";
-import { mockCurrentUser } from "@/lib/mock/data/users";
-import { mockAppointments } from "@/lib/mock/data/appointments";
-import { mockAssessments } from "@/lib/mock/data/assessments";
-import { mockConversations } from "@/lib/mock/data/messages";
+import { useAuth } from "@/contexts/AuthContext";
+import { apiClient } from "@/lib/api/client";
+import { ENDPOINTS } from "@/lib/api/endpoints";
 import { StatCard } from "@/components/common/StatCard";
 import { AppointmentCard } from "@/components/common/AppointmentCard";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -20,26 +20,53 @@ import {
   Plus,
   FileText,
 } from "lucide-react";
+import type { Appointment, Assessment, Conversation } from "@/types";
+
+interface ApiSuccess<T> {
+  success: true;
+  data: T;
+}
 
 export default function PatientDashboardPage() {
   const { t } = useTranslation();
-  const user = mockCurrentUser;
+  const { user } = useAuth();
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [assessments, setAssessments] = useState<Assessment[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const userAppointments = mockAppointments.filter(
-    (a) => a.patientId === user.id
-  );
-  const upcoming = userAppointments.filter(
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [aptsRes, assessRes, convsRes] = await Promise.all([
+          apiClient.get<ApiSuccess<Appointment[]>>(ENDPOINTS.appointments.list),
+          apiClient.get<ApiSuccess<Assessment[]>>(ENDPOINTS.assessments.list),
+          apiClient.get<ApiSuccess<Conversation[]>>(ENDPOINTS.messages.conversations),
+        ]);
+        if (aptsRes.success) setAppointments(aptsRes.data);
+        if (assessRes.success) setAssessments(assessRes.data);
+        if (convsRes.success) setConversations(convsRes.data);
+      } catch {
+        // handle error silently
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
+
+  if (!user) return null;
+
+  const upcoming = appointments.filter(
     (a) => a.status === "approved" || a.status === "pending"
   );
-  const completed = userAppointments.filter((a) => a.status === "completed");
-  const pendingAssessments = mockAssessments.filter(
-    (a) => a.patientId === user.id && a.status === "pending"
-  );
-  const unreadMessages = mockConversations.reduce(
+  const completed = appointments.filter((a) => a.status === "completed");
+  const pendingAssessments = assessments.filter((a) => a.status === "pending");
+  const unreadMessages = conversations.reduce(
     (sum, c) => sum + c.unreadCount,
     0
   );
-  const recentAppointments = userAppointments.slice(0, 5);
+  const recentAppointments = appointments.slice(0, 5);
 
   return (
     <div>
@@ -48,7 +75,6 @@ export default function PatientDashboardPage() {
         description={t.common.tagline}
       />
 
-      {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard
           label={t.dashboard.patient.upcomingAppointments}
@@ -73,7 +99,6 @@ export default function PatientDashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent Appointments */}
         <div className="lg:col-span-2">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -87,7 +112,9 @@ export default function PatientDashboardPage() {
               </Button>
             </CardHeader>
             <CardContent className="space-y-3">
-              {recentAppointments.length === 0 ? (
+              {loading ? (
+                <p className="text-sm text-muted-foreground">Loading...</p>
+              ) : recentAppointments.length === 0 ? (
                 <EmptyState
                   title={t.dashboard.patient.noUpcoming}
                   description={t.appointments.noAppointments}
@@ -105,7 +132,6 @@ export default function PatientDashboardPage() {
           </Card>
         </div>
 
-        {/* Quick Actions */}
         <div>
           <Card>
             <CardHeader>

@@ -1,12 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "@/i18n/useTranslation";
-import { mockCurrentUser } from "@/lib/mock/data/users";
-import {
-  mockConversations,
-  mockMessages,
-} from "@/lib/mock/data/messages";
+import { useAuth } from "@/contexts/AuthContext";
+import { apiClient } from "@/lib/api/client";
+import { ENDPOINTS } from "@/lib/api/endpoints";
 import { PageHeader } from "@/components/common/PageHeader";
 import { MessageBubble } from "@/components/common/MessageBubble";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -16,35 +14,104 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, MessageSquare } from "lucide-react";
+import { Send, MessageSquare, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import type { Conversation } from "@/types";
+import type { Conversation, Message } from "@/types";
+
+interface ApiSuccess<T> {
+  success: true;
+  data: T;
+}
 
 export default function MessagesPage() {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] =
-    useState<Conversation | null>(
-      mockConversations.length > 0 ? mockConversations[0] : null
-    );
+    useState<Conversation | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [message, setMessage] = useState("");
+  const [isLoadingConversations, setIsLoadingConversations] = useState(true);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [isSending, setIsSending] = useState(false);
 
-  const conversationMessages = selectedConversation
-    ? mockMessages.filter(
-        (m) => m.conversationId === selectedConversation.id
-      )
-    : [];
+  useEffect(() => {
+    async function fetchConversations() {
+      try {
+        const res = await apiClient.get<ApiSuccess<Conversation[]>>(
+          ENDPOINTS.messages.conversations
+        );
+        const convs = res.data;
+        setConversations(convs);
+        if (convs.length > 0) {
+          setSelectedConversation(convs[0]);
+        }
+      } catch {
+        setConversations([]);
+      } finally {
+        setIsLoadingConversations(false);
+      }
+    }
+    fetchConversations();
+  }, []);
+
+  const fetchMessages = useCallback(async (conversationId: string) => {
+    setIsLoadingMessages(true);
+    try {
+      const res = await apiClient.get<ApiSuccess<Message[]>>(
+        ENDPOINTS.messages.messages(conversationId)
+      );
+      setMessages(res.data);
+    } catch {
+      setMessages([]);
+    } finally {
+      setIsLoadingMessages(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (selectedConversation) {
+      fetchMessages(selectedConversation.id);
+    } else {
+      setMessages([]);
+    }
+  }, [selectedConversation, fetchMessages]);
 
   function getOtherParticipant(conv: Conversation) {
     return conv.participants.find(
-      (p) => p.userId !== mockCurrentUser.id
+      (p) => p.userId !== user?.id
     ) || conv.participants[0];
   }
 
-  function handleSend() {
-    if (!message.trim()) return;
-    toast.success(t.messages.send);
-    setMessage("");
+  async function handleSend() {
+    if (!message.trim() || !selectedConversation) return;
+    setIsSending(true);
+    try {
+      const res = await apiClient.post<ApiSuccess<Message>>(
+        ENDPOINTS.messages.send(selectedConversation.id),
+        { content: message.trim() }
+      );
+      setMessages((prev) => [...prev, res.data]);
+      setMessage("");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to send message"
+      );
+    } finally {
+      setIsSending(false);
+    }
+  }
+
+  if (isLoadingConversations) {
+    return (
+      <div>
+        <PageHeader title={t.messages.title} />
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -56,14 +123,14 @@ export default function MessagesPage() {
         <Card className="md:col-span-1 flex flex-col">
           <CardContent className="p-0 flex-1">
             <ScrollArea className="h-full">
-              {mockConversations.length === 0 ? (
+              {conversations.length === 0 ? (
                 <EmptyState
                   icon={<MessageSquare className="h-8 w-8 text-muted-foreground" />}
                   title={t.messages.noConversations}
                 />
               ) : (
                 <div className="divide-y">
-                  {mockConversations.map((conv) => {
+                  {conversations.map((conv) => {
                     const other = getOtherParticipant(conv);
                     const isSelected = selectedConversation?.id === conv.id;
                     const initials = other.name
@@ -139,16 +206,20 @@ export default function MessagesPage() {
 
                 {/* Messages */}
                 <ScrollArea className="flex-1 p-4">
-                  {conversationMessages.length === 0 ? (
+                  {isLoadingMessages ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : messages.length === 0 ? (
                     <p className="text-center py-8 text-sm text-muted-foreground">
                       {t.messages.noMessages}
                     </p>
                   ) : (
-                    conversationMessages.map((msg) => (
+                    messages.map((msg) => (
                       <MessageBubble
                         key={msg.id}
                         message={msg}
-                        isOwn={msg.senderId === mockCurrentUser.id}
+                        isOwn={msg.senderId === user?.id}
                       />
                     ))
                   )}
@@ -162,11 +233,16 @@ export default function MessagesPage() {
                       onChange={(e) => setMessage(e.target.value)}
                       placeholder={t.messages.typeMessage}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter") handleSend();
+                        if (e.key === "Enter" && !isSending) handleSend();
                       }}
+                      disabled={isSending}
                     />
-                    <Button size="icon" onClick={handleSend}>
-                      <Send className="h-4 w-4" />
+                    <Button size="icon" onClick={handleSend} disabled={isSending}>
+                      {isSending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Send className="h-4 w-4" />
+                      )}
                     </Button>
                   </div>
                 </div>

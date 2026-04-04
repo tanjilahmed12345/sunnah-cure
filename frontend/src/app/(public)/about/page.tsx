@@ -1,11 +1,16 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useTranslation } from "@/i18n/useTranslation";
-import { mockDoctors } from "@/lib/mock/data/doctors";
+import { apiClient } from "@/lib/api/client";
+import { ENDPOINTS } from "@/lib/api/endpoints";
+import type { DoctorProfile } from "@/types";
 import { Target, Eye, Heart, Users, Award, ShieldCheck } from "lucide-react";
+
+interface ApiSuccess<T> { success: true; data: T; }
 
 const specializationLabels: Record<string, string> = {
   hijama_therapy: "Hijama Therapy",
@@ -16,10 +21,19 @@ const specializationLabels: Record<string, string> = {
 
 export default function AboutPage() {
   const { t } = useTranslation();
+  const [approvedDoctors, setApprovedDoctors] = useState<DoctorProfile[]>([]);
 
-  const approvedDoctors = mockDoctors.filter(
-    (doc) => doc.approvalStatus === "approved"
-  );
+  useEffect(() => {
+    async function fetch() {
+      try {
+        const res = await apiClient.get<ApiSuccess<DoctorProfile[]>>(
+          ENDPOINTS.doctors.list, { status: "approved" }
+        );
+        if (res.success) setApprovedDoctors(res.data);
+      } catch { /* ignore - public page, doctors are optional */ }
+    }
+    fetch();
+  }, []);
 
   return (
     <div className="flex flex-col">

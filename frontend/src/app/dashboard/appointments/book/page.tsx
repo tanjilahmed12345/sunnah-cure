@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { useTranslation } from "@/i18n/useTranslation";
-import { mockServices } from "@/lib/mock/data/services";
+import { useAuth } from "@/contexts/AuthContext";
+import { apiClient } from "@/lib/api/client";
+import { ENDPOINTS } from "@/lib/api/endpoints";
 import {
   hijamaBookingSchema,
   type HijamaBookingFormData,
@@ -57,6 +59,11 @@ import {
 import { cn, formatCurrency } from "@/lib/utils";
 import type { ServiceType, AppointmentMode, Service, AssessmentFormData } from "@/types";
 
+interface ApiSuccess<T> {
+  success: true;
+  data: T;
+}
+
 export default function BookAppointmentPage() {
   return (
     <Suspense>
@@ -69,15 +76,33 @@ function BookAppointmentContent() {
   const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user } = useAuth();
   const serviceParam = searchParams.get("service") as ServiceType | null;
-  const validService = serviceParam && mockServices.some((s) => s.type === serviceParam)
+
+  const [services, setServices] = useState<Service[]>([]);
+  const [isLoadingServices, setIsLoadingServices] = useState(true);
+
+  useEffect(() => {
+    async function fetchServices() {
+      setIsLoadingServices(true);
+      try {
+        const res = await apiClient.get<ApiSuccess<Service[]>>(ENDPOINTS.services.list);
+        setServices(res.data);
+      } catch {
+        toast.error("Failed to load services");
+      } finally {
+        setIsLoadingServices(false);
+      }
+    }
+    fetchServices();
+  }, []);
+
+  const validService = serviceParam && services.some((s) => s.type === serviceParam)
     ? serviceParam
     : null;
 
-  const [currentStep, setCurrentStep] = useState(validService ? 2 : 1);
-  const [selectedService, setSelectedService] = useState<ServiceType | null>(
-    validService
-  );
+  const [currentStep, setCurrentStep] = useState(1);
+  const [selectedService, setSelectedService] = useState<ServiceType | null>(null);
   const [mode, setMode] = useState<AppointmentMode>("offline");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [serviceFormData, setServiceFormData] = useState<
@@ -85,6 +110,14 @@ function BookAppointmentContent() {
   >(null);
   const [calculatedPrice, setCalculatedPrice] = useState<number | null>(null);
   const [assessmentData, setAssessmentData] = useState<AssessmentFormData | null>(null);
+
+  // Once services load, apply the service param
+  useEffect(() => {
+    if (!isLoadingServices && validService) {
+      setSelectedService(validService);
+      setCurrentStep(2);
+    }
+  }, [isLoadingServices, validService]);
 
   const isAssessmentService = selectedService === "hijama" || selectedService === "ruqyah";
 
@@ -122,8 +155,8 @@ function BookAppointmentContent() {
     ? STEP_CONFIRM
     : currentStep;
 
-  const bookableServices = mockServices;
-  const selectedServiceData = mockServices.find(
+  const bookableServices = services;
+  const selectedServiceData = services.find(
     (s) => s.type === selectedService
   );
 
@@ -151,10 +184,20 @@ function BookAppointmentContent() {
 
   async function handleFinalSubmit() {
     setIsSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setIsSubmitting(false);
-    toast.success(t.booking.bookingSuccess);
-    setCurrentStep(STEP_SUCCESS);
+    try {
+      await apiClient.post(ENDPOINTS.appointments.create, {
+        serviceType: selectedService,
+        mode,
+        serviceData: serviceFormData,
+        assessmentData: assessmentData || undefined,
+      });
+      toast.success(t.booking.bookingSuccess);
+      setCurrentStep(STEP_SUCCESS);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to create booking");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -169,17 +212,23 @@ function BookAppointmentContent() {
       {currentStep === STEP_SERVICE && (
         <div>
           <p className="text-muted-foreground mb-6">{t.booking.selectService}</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {bookableServices.map((service) => (
-              <div
-                key={service.id}
-                onClick={() => handleServiceSelect(service.type)}
-                className="cursor-pointer"
-              >
-                <ServiceCard service={service} showActions={false} />
-              </div>
-            ))}
-          </div>
+          {isLoadingServices ? (
+            <div className="flex items-center justify-center h-40">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {bookableServices.map((service) => (
+                <div
+                  key={service.id}
+                  onClick={() => handleServiceSelect(service.type)}
+                  className="cursor-pointer"
+                >
+                  <ServiceCard service={service} showActions={false} />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

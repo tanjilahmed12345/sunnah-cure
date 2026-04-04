@@ -1,8 +1,10 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslation } from "@/i18n/useTranslation";
-import { mockAssessments } from "@/lib/mock/data/assessments";
+import { apiClient } from "@/lib/api/client";
+import { ENDPOINTS } from "@/lib/api/endpoints";
 import { PageHeader } from "@/components/common/PageHeader";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import {
@@ -13,15 +15,45 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { formatDate } from "@/lib/utils";
+import { Loader2 } from "lucide-react";
+import type { Assessment } from "@/types";
+
+interface ApiSuccess<T> {
+  success: true;
+  data: T;
+}
 
 export default function AssessmentDetailPage() {
   const { t } = useTranslation();
   const params = useParams();
   const router = useRouter();
+  const [assessment, setAssessment] = useState<Assessment | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const assessment = mockAssessments.find((a) => a.id === params.id);
+  useEffect(() => {
+    async function fetchAssessment() {
+      try {
+        const res = await apiClient.get<ApiSuccess<Assessment>>(
+          ENDPOINTS.assessments.detail(params.id as string)
+        );
+        setAssessment(res.data);
+      } catch {
+        setAssessment(null);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchAssessment();
+  }, [params.id]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   if (!assessment) {
     return (

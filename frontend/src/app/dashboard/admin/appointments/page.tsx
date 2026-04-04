@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useCallback, useMemo, useRef } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "@/i18n/useTranslation";
 import { toast } from "sonner";
 import { format, isSameDay, parseISO } from "date-fns";
+import { apiClient } from "@/lib/api/client";
+import { ENDPOINTS } from "@/lib/api/endpoints";
 import { PageHeader } from "@/components/common/PageHeader";
 import { SearchInput } from "@/components/common/SearchInput";
 import { DataTable, type Column } from "@/components/common/DataTable";
@@ -24,11 +26,14 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { mockAppointments } from "@/lib/mock/data/appointments";
-import { mockUsers } from "@/lib/mock/data/users";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import type { Appointment } from "@/types";
-import { Eye, Check, X, CalendarDays } from "lucide-react";
+import { Eye, Check, X, CalendarDays, Loader2 } from "lucide-react";
+
+interface ApiSuccess<T> {
+  success: true;
+  data: T;
+}
 
 export default function AdminAppointmentsPage() {
   const { t } = useTranslation();
@@ -42,11 +47,29 @@ export default function AdminAppointmentsPage() {
   const [approveDate, setApproveDate] = useState("");
   const [approveTime, setApproveTime] = useState("");
   const [rejectReason, setRejectReason] = useState("");
-  const [appointments, setAppointments] = useState<Appointment[]>([...mockAppointments]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date | undefined>(undefined);
   const [hoveredDate, setHoveredDate] = useState<Date | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
   const calendarRef = useRef<HTMLDivElement>(null);
+
+  const fetchAppointments = useCallback(async () => {
+    try {
+      const res = await apiClient.get<ApiSuccess<Appointment[]>>(
+        ENDPOINTS.appointments.list
+      );
+      if (res.success) setAppointments(res.data);
+    } catch (err) {
+      console.error("Failed to fetch appointments:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAppointments();
+  }, [fetchAppointments]);
 
   const appointmentsByDate = useMemo(() => {
     const map = new Map<string, Appointment[]>();
@@ -64,12 +87,12 @@ export default function AdminAppointmentsPage() {
     return Array.from(appointmentsByDate.keys()).map((d) => parseISO(d));
   }, [appointmentsByDate]);
 
-  const getPatientName = useCallback((patientId: string) => {
-    return mockUsers.find((u) => u.id === patientId)?.name || "Unknown";
+  const getPatientName = useCallback((item: Appointment) => {
+    return item.patient?.name || "Unknown";
   }, []);
 
-  const getPatientPhone = useCallback((patientId: string) => {
-    return mockUsers.find((u) => u.id === patientId)?.phone || "";
+  const getPatientPhone = useCallback((item: Appointment) => {
+    return item.patient?.phone || "";
   }, []);
 
   const filteredAppointments = useMemo(() => {
@@ -88,8 +111,8 @@ export default function AdminAppointmentsPage() {
       const q = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (a) =>
-          getPatientName(a.patientId).toLowerCase().includes(q) ||
-          getPatientPhone(a.patientId).includes(q) ||
+          getPatientName(a).toLowerCase().includes(q) ||
+          getPatientPhone(a).includes(q) ||
           a.serviceName.toLowerCase().includes(q)
       );
     }
@@ -113,43 +136,45 @@ export default function AdminAppointmentsPage() {
     setRejectDialogOpen(true);
   };
 
-  const confirmApprove = () => {
+  const confirmApprove = async () => {
     if (!selectedAppointment) return;
-    setAppointments((prev) =>
-      prev.map((a) =>
-        a.id === selectedAppointment.id
-          ? {
-              ...a,
-              status: "approved" as const,
-              scheduledDate: approveDate || a.scheduledDate,
-              scheduledTime: approveTime || a.scheduledTime,
-              updatedAt: new Date().toISOString(),
-            }
-          : a
-      )
-    );
-    toast.success(`Appointment for ${getPatientName(selectedAppointment.patientId)} has been approved.`);
-    setApproveDialogOpen(false);
-    setSelectedAppointment(null);
+    try {
+      await apiClient.patch<ApiSuccess<Appointment>>(
+        ENDPOINTS.appointments.update(selectedAppointment.id),
+        {
+          action: "approve",
+          scheduledDate: approveDate || undefined,
+          scheduledTime: approveTime || undefined,
+        }
+      );
+      toast.success(`Appointment for ${getPatientName(selectedAppointment)} has been approved.`);
+      setApproveDialogOpen(false);
+      setSelectedAppointment(null);
+      fetchAppointments();
+    } catch (err) {
+      toast.error("Failed to approve appointment.");
+      console.error(err);
+    }
   };
 
-  const confirmReject = () => {
+  const confirmReject = async () => {
     if (!selectedAppointment) return;
-    setAppointments((prev) =>
-      prev.map((a) =>
-        a.id === selectedAppointment.id
-          ? {
-              ...a,
-              status: "rejected" as const,
-              rejectionReason: rejectReason,
-              updatedAt: new Date().toISOString(),
-            }
-          : a
-      )
-    );
-    toast.success(`Appointment for ${getPatientName(selectedAppointment.patientId)} has been rejected.`);
-    setRejectDialogOpen(false);
-    setSelectedAppointment(null);
+    try {
+      await apiClient.patch<ApiSuccess<Appointment>>(
+        ENDPOINTS.appointments.update(selectedAppointment.id),
+        {
+          action: "reject",
+          rejectionReason: rejectReason,
+        }
+      );
+      toast.success(`Appointment for ${getPatientName(selectedAppointment)} has been rejected.`);
+      setRejectDialogOpen(false);
+      setSelectedAppointment(null);
+      fetchAppointments();
+    } catch (err) {
+      toast.error("Failed to reject appointment.");
+      console.error(err);
+    }
   };
 
   const columns: Column<Appointment>[] = [
@@ -157,13 +182,13 @@ export default function AdminAppointmentsPage() {
       key: "patient",
       header: t.appointments.patient,
       cell: (item) => (
-        <span className="font-medium">{getPatientName(item.patientId)}</span>
+        <span className="font-medium">{getPatientName(item)}</span>
       ),
     },
     {
       key: "phone",
       header: t.appointments.phone,
-      cell: (item) => getPatientPhone(item.patientId),
+      cell: (item) => getPatientPhone(item),
       hideOnMobile: true,
     },
     {
@@ -260,7 +285,7 @@ export default function AdminAppointmentsPage() {
     <Card>
       <CardContent className="p-4">
         <div className="flex items-center justify-between mb-2">
-          <span className="font-medium">{getPatientName(item.patientId)}</span>
+          <span className="font-medium">{getPatientName(item)}</span>
           <StatusBadge status={item.status} />
         </div>
         <p className="text-sm text-muted-foreground">{item.serviceName}</p>
@@ -303,6 +328,14 @@ export default function AdminAppointmentsPage() {
       </CardContent>
     </Card>
   );
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -387,7 +420,7 @@ export default function AdminAppointmentsPage() {
                           <span className="text-muted-foreground">{apt.scheduledTime || "TBD"}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="font-medium">{getPatientName(apt.patientId)}</span>
+                          <span className="font-medium">{getPatientName(apt)}</span>
                           <StatusBadge status={apt.status} />
                         </div>
                         {apt !== dayAppointments[dayAppointments.length - 1] && (

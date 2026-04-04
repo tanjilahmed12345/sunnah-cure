@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslation } from "@/i18n/useTranslation";
 import { toast } from "sonner";
+import { apiClient } from "@/lib/api/client";
+import { ENDPOINTS } from "@/lib/api/endpoints";
 import { PageHeader } from "@/components/common/PageHeader";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { PaymentStatusBadge } from "@/components/common/PaymentStatusBadge";
@@ -22,13 +24,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { mockAppointments } from "@/lib/mock/data/appointments";
-import { mockUsers } from "@/lib/mock/data/users";
-import { mockDoctors } from "@/lib/mock/data/doctors";
-import { mockMessages } from "@/lib/mock/data/messages";
-import { mockPayments } from "@/lib/mock/data/payments";
 import { formatDate, formatCurrency } from "@/lib/utils";
-import type { Appointment, HijamaData, RuqyahData, CounselingData } from "@/types";
+import type { Appointment, DoctorProfile, HijamaData, RuqyahData, CounselingData, Message, Payment } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
@@ -44,8 +41,14 @@ import {
   CreditCard,
   CheckCircle,
   Banknote,
+  Loader2,
 } from "lucide-react";
 import type { PaymentMethod } from "@/types";
+
+interface ApiSuccess<T> {
+  success: true;
+  data: T;
+}
 
 export default function AdminAppointmentDetailPage() {
   const { t } = useTranslation();
@@ -53,31 +56,18 @@ export default function AdminAppointmentDetailPage() {
   const params = useParams();
   const id = params.id as string;
 
-  const appointment = mockAppointments.find((a) => a.id === id);
-  const patient = appointment
-    ? mockUsers.find((u) => u.id === appointment.patientId)
-    : null;
-  const approvedDoctors = mockDoctors.filter(
-    (d) => d.approvalStatus === "approved"
-  );
-  const initialMessages = mockMessages.filter((m) => m.conversationId === "conv-1");
-  const [messages, setMessages] = useState(initialMessages);
-  const payment = appointment
-    ? mockPayments.find((p) => p.appointmentId === appointment.id)
-    : null;
+  const [appointment, setAppointment] = useState<Appointment | null>(null);
+  const [doctors, setDoctors] = useState<DoctorProfile[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [payment, setPayment] = useState<Payment | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const [status, setStatus] = useState(appointment?.status || "pending");
-  const [scheduledDate, setScheduledDate] = useState(
-    appointment?.scheduledDate || ""
-  );
-  const [scheduledTime, setScheduledTime] = useState(
-    appointment?.scheduledTime || ""
-  );
-  const [assignedDoctor, setAssignedDoctor] = useState(
-    appointment?.doctorId || ""
-  );
-  const [adminNotes, setAdminNotes] = useState(appointment?.adminNotes || "");
-  const [chatEnabled, setChatEnabled] = useState(appointment?.chatEnabled ?? false);
+  const [status, setStatus] = useState("");
+  const [scheduledDate, setScheduledDate] = useState("");
+  const [scheduledTime, setScheduledTime] = useState("");
+  const [assignedDoctor, setAssignedDoctor] = useState("");
+  const [adminNotes, setAdminNotes] = useState("");
+  const [chatEnabled, setChatEnabled] = useState(false);
   const [newMessage, setNewMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
@@ -90,19 +80,67 @@ export default function AdminAppointmentDetailPage() {
   const [paymentAccountNo, setPaymentAccountNo] = useState("");
   const [paymentNotes, setPaymentNotes] = useState("");
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-  const [localPaymentStatus, setLocalPaymentStatus] = useState(appointment?.paymentStatus || "unpaid");
+  const [localPaymentStatus, setLocalPaymentStatus] = useState("unpaid");
 
-  const handleSave = () => {
+  const fetchAppointment = useCallback(async () => {
+    try {
+      const [aptRes, doctorsRes] = await Promise.all([
+        apiClient.get<ApiSuccess<Appointment>>(ENDPOINTS.appointments.detail(id)),
+        apiClient.get<ApiSuccess<DoctorProfile[]>>(ENDPOINTS.doctors.list),
+      ]);
+      if (aptRes.success) {
+        const apt = aptRes.data;
+        setAppointment(apt);
+        setStatus(apt.status || "pending");
+        setScheduledDate(apt.scheduledDate || "");
+        setScheduledTime(apt.scheduledTime || "");
+        setAssignedDoctor(apt.doctorId || "");
+        setAdminNotes(apt.adminNotes || "");
+        setChatEnabled(apt.chatEnabled ?? false);
+        setLocalPaymentStatus(apt.paymentStatus || "unpaid");
+      }
+      if (doctorsRes.success) {
+        setDoctors(doctorsRes.data.filter((d) => d.approvalStatus === "approved"));
+      }
+    } catch (err) {
+      console.error("Failed to fetch appointment:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    fetchAppointment();
+  }, [fetchAppointment]);
+
+  const handleSave = async () => {
+    if (!appointment) return;
     setIsSaving(true);
-    setTimeout(() => {
-      setIsSaving(false);
+    try {
+      await apiClient.patch<ApiSuccess<Appointment>>(
+        ENDPOINTS.appointments.update(id),
+        {
+          status,
+          scheduledDate: scheduledDate || undefined,
+          scheduledTime: scheduledTime || undefined,
+          doctorId: assignedDoctor || undefined,
+          adminNotes: adminNotes || undefined,
+          chatEnabled,
+        }
+      );
       toast.success("Appointment updated successfully.");
-    }, 500);
+      fetchAppointment();
+    } catch (err) {
+      toast.error("Failed to update appointment.");
+      console.error(err);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleSendMessage = () => {
     if (!newMessage.trim()) return;
-    const msg = {
+    const msg: Message = {
       id: `msg-${Date.now()}`,
       conversationId: "conv-1",
       senderId: "admin-1",
@@ -117,19 +155,32 @@ export default function AdminAppointmentDetailPage() {
     setNewMessage("");
   };
 
-  const handleConfirmPayment = () => {
+  const handleConfirmPayment = async () => {
     if (!paymentMethod) {
       toast.error("Please select a payment method.");
       return;
     }
     setIsProcessingPayment(true);
-    setTimeout(() => {
-      setIsProcessingPayment(false);
+    try {
+      // Simulate payment confirmation - in real app, call payment endpoint
       setLocalPaymentStatus("paid");
       setShowPaymentForm(false);
       toast.success("Payment recorded successfully.");
-    }, 500);
+    } catch (err) {
+      toast.error("Failed to process payment.");
+      console.error(err);
+    } finally {
+      setIsProcessingPayment(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   if (!appointment) {
     return (
@@ -139,6 +190,9 @@ export default function AdminAppointmentDetailPage() {
       </div>
     );
   }
+
+  const patient = appointment.patient;
+  const doctor = appointment.doctor;
 
   const renderServiceData = () => {
     const data = appointment.serviceData;
@@ -311,9 +365,8 @@ export default function AdminAppointmentDetailPage() {
                     {t.appointments.doctor}
                   </span>
                   <p className="font-medium">
-                    {appointment.doctorId
-                      ? mockDoctors.find((d) => d.id === appointment.doctorId)
-                          ?.user.name || "Unknown"
+                    {doctor
+                      ? doctor.user.name
                       : "Not assigned"}
                   </p>
                 </div>
@@ -644,8 +697,6 @@ export default function AdminAppointmentDetailPage() {
                     </div>
                   )}
 
-                  {/* Cash has no extra fields */}
-
                   <div>
                     <Label className="text-sm">Notes (optional)</Label>
                     <Textarea
@@ -775,7 +826,7 @@ export default function AdminAppointmentDetailPage() {
                     <SelectValue placeholder={t.appointments.assignDoctor} />
                   </SelectTrigger>
                   <SelectContent>
-                    {approvedDoctors.map((doc) => (
+                    {doctors.map((doc) => (
                       <SelectItem key={doc.id} value={doc.id}>
                         {doc.user.name} ({doc.specialization.replace("_", " ")})
                       </SelectItem>

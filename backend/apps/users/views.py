@@ -98,8 +98,13 @@ class MeView(APIView):
 # ---------------------------------------------------------------------------
 
 class DoctorListView(generics.ListAPIView):
-    permission_classes = [IsAdmin]
     serializer_class = DoctorProfileSerializer
+
+    def get_permissions(self):
+        # Allow public access when filtering by approved status (for about page)
+        if self.request.query_params.get("status") == "approved":
+            return [AllowAny()]
+        return [IsAdmin()]
 
     def get_queryset(self):
         qs = DoctorProfile.objects.select_related("user").all()
