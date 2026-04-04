@@ -12,7 +12,7 @@ import { UserAvatarDropdown } from "@/components/common/UserAvatarDropdown";
 import { Logo } from "@/components/common/Logo";
 import { useTranslation } from "@/i18n/useTranslation";
 import { NAV_ITEMS } from "@/lib/constants";
-import { mockCurrentUser } from "@/lib/mock/data/users";
+import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 
 export function Navbar() {
@@ -20,9 +20,7 @@ export function Navbar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
-  // Mock: toggle between logged in and not
-  const isLoggedIn = false;
-  const user = isLoggedIn ? mockCurrentUser : null;
+  const { user, isLoggedIn, logout } = useAuth();
 
   const navItems = NAV_ITEMS.map((item) => ({
     ...item,
@@ -58,7 +56,7 @@ export function Navbar() {
           <LanguageSwitcher />
           <ThemeToggle />
           {user ? (
-            <UserAvatarDropdown user={user} />
+            <UserAvatarDropdown user={user} onLogout={logout} />
           ) : (
             <>
               <Button asChild variant="ghost" size="sm">

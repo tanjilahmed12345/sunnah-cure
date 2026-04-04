@@ -1,12 +1,14 @@
 "use client";
 
+import { Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { loginSchema, type LoginFormData } from "@/lib/validations/auth";
 import { useTranslation } from "@/i18n/useTranslation";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Card,
   CardContent,
@@ -29,9 +31,21 @@ import { Loader2 } from "lucide-react";
 import { useState } from "react";
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginContent />
+    </Suspense>
+  );
+}
+
+function LoginContent() {
   const { t } = useTranslation();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { login } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+
+  const redirectTo = searchParams.get("redirect") || "/dashboard";
 
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema) as any,
@@ -46,8 +60,9 @@ export default function LoginPage() {
     try {
       // Mock login delay
       await new Promise((resolve) => setTimeout(resolve, 1000));
+      login();
       toast.success(t.common.success);
-      router.push("/dashboard");
+      router.push(redirectTo);
     } catch {
       toast.error(t.errors.networkError);
     } finally {

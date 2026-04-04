@@ -1,16 +1,38 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { DashboardTopbar } from "@/components/layout/DashboardTopbar";
-import { mockCurrentUser } from "@/lib/mock/data/users";
+import { Loader2 } from "lucide-react";
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // Mock: use the current user's role for sidebar
-  const user = mockCurrentUser;
+  const { user, isLoggedIn, isLoading } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    if (!isLoading && !isLoggedIn) {
+      router.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
+    }
+  }, [isLoading, isLoggedIn, router, pathname]);
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!isLoggedIn || !user) {
+    return null;
+  }
 
   return (
     <div className="flex min-h-screen">

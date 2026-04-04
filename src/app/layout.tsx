@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { LanguageProvider } from "@/i18n/context";
+import { AuthProvider } from "@/contexts/AuthContext";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
@@ -34,12 +35,14 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <LanguageProvider>
-            <TooltipProvider>
-              {children}
-            </TooltipProvider>
-            <Toaster position="bottom-right" richColors />
-          </LanguageProvider>
+          <AuthProvider>
+            <LanguageProvider>
+              <TooltipProvider>
+                {children}
+              </TooltipProvider>
+              <Toaster position="bottom-right" richColors />
+            </LanguageProvider>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>
