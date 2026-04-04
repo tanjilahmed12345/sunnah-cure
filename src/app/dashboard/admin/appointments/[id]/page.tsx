@@ -30,6 +30,7 @@ import { mockPayments } from "@/lib/mock/data/payments";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import type { Appointment, HijamaData, RuqyahData, CounselingData } from "@/types";
 import { Badge } from "@/components/ui/badge";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   ArrowLeft,
   User,
@@ -39,7 +40,11 @@ import {
   Send,
   MessageSquare,
   ClipboardList,
+  CreditCard,
+  CheckCircle,
+  Banknote,
 } from "lucide-react";
+import type { PaymentMethod } from "@/types";
 
 export default function AdminAppointmentDetailPage() {
   const { t } = useTranslation();
@@ -74,6 +79,17 @@ export default function AdminAppointmentDetailPage() {
   const [newMessage, setNewMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
+  // Payment management state
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | "">("");
+  const [paymentTransactionId, setPaymentTransactionId] = useState("");
+  const [paymentPhone, setPaymentPhone] = useState("");
+  const [paymentBankName, setPaymentBankName] = useState("");
+  const [paymentAccountNo, setPaymentAccountNo] = useState("");
+  const [paymentNotes, setPaymentNotes] = useState("");
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [localPaymentStatus, setLocalPaymentStatus] = useState(appointment?.paymentStatus || "unpaid");
+
   const handleSave = () => {
     setIsSaving(true);
     setTimeout(() => {
@@ -97,6 +113,20 @@ export default function AdminAppointmentDetailPage() {
     };
     setMessages((prev) => [...prev, msg]);
     setNewMessage("");
+  };
+
+  const handleConfirmPayment = () => {
+    if (!paymentMethod) {
+      toast.error("Please select a payment method.");
+      return;
+    }
+    setIsProcessingPayment(true);
+    setTimeout(() => {
+      setIsProcessingPayment(false);
+      setLocalPaymentStatus("paid");
+      setShowPaymentForm(false);
+      toast.success("Payment recorded successfully.");
+    }, 500);
   };
 
   if (!appointment) {
@@ -266,7 +296,7 @@ export default function AdminAppointmentDetailPage() {
                     {t.appointments.payment}
                   </span>
                   <div className="flex items-center gap-2 mt-1">
-                    <PaymentStatusBadge status={appointment.paymentStatus} />
+                    <PaymentStatusBadge status={localPaymentStatus} />
                     {appointment.paymentAmount && (
                       <span className="text-sm">
                         {formatCurrency(appointment.paymentAmount)}
@@ -427,13 +457,17 @@ export default function AdminAppointmentDetailPage() {
             </Card>
           )}
 
-          {/* Payment Info */}
-          {payment && (
-            <Card>
-              <CardHeader>
-                <CardTitle>{t.payment.title}</CardTitle>
-              </CardHeader>
-              <CardContent>
+          {/* Payment Info / Management */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5" />
+                {t.payment.title}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {/* Existing payment record */}
+              {payment && localPaymentStatus === "paid" && (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <span className="text-sm text-muted-foreground">
@@ -464,9 +498,183 @@ export default function AdminAppointmentDetailPage() {
                     <p className="font-medium capitalize">{payment.status}</p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              )}
+
+              {/* Payment just confirmed by admin (no prior payment record) */}
+              {!payment && localPaymentStatus === "paid" && (
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+                  <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400 shrink-0" />
+                  <div>
+                    <p className="font-medium text-green-800 dark:text-green-300">Payment Recorded</p>
+                    <p className="text-sm text-green-700 dark:text-green-400">
+                      {paymentMethod && <span className="capitalize">{paymentMethod}</span>}
+                      {appointment.paymentAmount && ` — ${formatCurrency(appointment.paymentAmount)}`}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Unpaid — show Mark as Paid button or form */}
+              {localPaymentStatus === "unpaid" && !showPaymentForm && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <PaymentStatusBadge status="unpaid" />
+                      {appointment.paymentAmount && (
+                        <span className="text-sm text-muted-foreground">
+                          {formatCurrency(appointment.paymentAmount)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => setShowPaymentForm(true)}
+                    className="w-full"
+                    variant="default"
+                  >
+                    <Banknote className="mr-2 h-4 w-4" />
+                    Mark as Paid
+                  </Button>
+                </div>
+              )}
+
+              {/* Payment form */}
+              {localPaymentStatus === "unpaid" && showPaymentForm && (
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-sm font-medium">Payment Method</Label>
+                    <RadioGroup
+                      value={paymentMethod}
+                      onValueChange={(v) => {
+                        setPaymentMethod(v as PaymentMethod);
+                        setPaymentTransactionId("");
+                        setPaymentPhone("");
+                        setPaymentBankName("");
+                        setPaymentAccountNo("");
+                      }}
+                      className="grid grid-cols-2 gap-2 mt-2"
+                    >
+                      {[
+                        { value: "cash", label: "Cash" },
+                        { value: "bkash", label: "bKash" },
+                        { value: "nagad", label: "Nagad" },
+                        { value: "rocket", label: "Rocket" },
+                        { value: "bank", label: "Bank Transfer" },
+                        { value: "card", label: "Card" },
+                      ].map((m) => (
+                        <div key={m.value} className="flex items-center space-x-2">
+                          <RadioGroupItem value={m.value} id={`pm-${m.value}`} />
+                          <Label htmlFor={`pm-${m.value}`} className="font-normal cursor-pointer text-sm">
+                            {m.label}
+                          </Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                  </div>
+
+                  {/* Method-specific fields */}
+                  {(paymentMethod === "bkash" || paymentMethod === "nagad" || paymentMethod === "rocket") && (
+                    <div className="space-y-3 rounded-lg border p-3">
+                      <div>
+                        <Label className="text-sm">Phone Number</Label>
+                        <Input
+                          value={paymentPhone}
+                          onChange={(e) => setPaymentPhone(e.target.value)}
+                          placeholder="01XXXXXXXXX"
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-sm">Transaction ID</Label>
+                        <Input
+                          value={paymentTransactionId}
+                          onChange={(e) => setPaymentTransactionId(e.target.value)}
+                          placeholder="e.g. TXN12345678"
+                          className="mt-1"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {paymentMethod === "bank" && (
+                    <div className="space-y-3 rounded-lg border p-3">
+                      <div>
+                        <Label className="text-sm">Bank Name</Label>
+                        <Input
+                          value={paymentBankName}
+                          onChange={(e) => setPaymentBankName(e.target.value)}
+                          placeholder="e.g. Dutch Bangla Bank"
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-sm">Account / Reference No.</Label>
+                        <Input
+                          value={paymentAccountNo}
+                          onChange={(e) => setPaymentAccountNo(e.target.value)}
+                          placeholder="Account or reference number"
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-sm">Transaction ID</Label>
+                        <Input
+                          value={paymentTransactionId}
+                          onChange={(e) => setPaymentTransactionId(e.target.value)}
+                          placeholder="Optional"
+                          className="mt-1"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {paymentMethod === "card" && (
+                    <div className="space-y-3 rounded-lg border p-3">
+                      <div>
+                        <Label className="text-sm">Transaction / Approval ID</Label>
+                        <Input
+                          value={paymentTransactionId}
+                          onChange={(e) => setPaymentTransactionId(e.target.value)}
+                          placeholder="Card transaction reference"
+                          className="mt-1"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Cash has no extra fields */}
+
+                  <div>
+                    <Label className="text-sm">Notes (optional)</Label>
+                    <Textarea
+                      value={paymentNotes}
+                      onChange={(e) => setPaymentNotes(e.target.value)}
+                      placeholder="Any additional notes about this payment..."
+                      className="mt-1"
+                      rows={2}
+                    />
+                  </div>
+
+                  <div className="flex gap-2 pt-1">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowPaymentForm(false)}
+                      className="flex-1"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleConfirmPayment}
+                      disabled={!paymentMethod || isProcessingPayment}
+                      className="flex-1"
+                    >
+                      {isProcessingPayment ? "Processing..." : "Confirm Payment"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         {/* Sidebar */}

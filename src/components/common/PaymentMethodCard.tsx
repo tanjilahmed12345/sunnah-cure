@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
-import { CreditCard, Smartphone, Mail } from "lucide-react";
+import { CreditCard, Smartphone, Mail, Banknote, Building2 } from "lucide-react";
 import type { PaymentMethod } from "@/types";
 
 const methodConfig: Record<
@@ -15,6 +15,8 @@ const methodConfig: Record<
   paypal: { icon: Mail, color: "text-blue-600", bgColor: "bg-blue-50 dark:bg-blue-950/30" },
   stripe: { icon: CreditCard, color: "text-indigo-600", bgColor: "bg-indigo-50 dark:bg-indigo-950/30" },
   card: { icon: CreditCard, color: "text-slate-600", bgColor: "bg-slate-50 dark:bg-slate-950/30" },
+  cash: { icon: Banknote, color: "text-green-600", bgColor: "bg-green-50 dark:bg-green-950/30" },
+  bank: { icon: Building2, color: "text-teal-600", bgColor: "bg-teal-50 dark:bg-teal-950/30" },
 };
 
 interface PaymentMethodCardProps {

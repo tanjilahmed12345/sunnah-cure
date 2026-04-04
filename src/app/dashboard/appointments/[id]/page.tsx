@@ -54,8 +54,7 @@ export default function AppointmentDetailPage() {
     (m) => m.conversationId === "conv-1"
   );
 
-  const canPay =
-    appointment.mode === "online" && appointment.paymentStatus === "unpaid";
+  const canPay = appointment.paymentStatus === "unpaid";
   const canCancel =
     appointment.status === "pending" || appointment.status === "approved";
 

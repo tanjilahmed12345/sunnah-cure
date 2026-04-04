@@ -6,7 +6,9 @@ export type PaymentMethod =
   | "rocket"
   | "paypal"
   | "stripe"
-  | "card";
+  | "card"
+  | "cash"
+  | "bank";
 
 export type PaymentTransactionStatus =
   | "pending"
