@@ -59,6 +59,7 @@ export interface Appointment extends Timestamps {
   adminNotes?: string;
   rejectionReason?: string;
   assessmentData?: AssessmentFormData;
+  chatEnabled?: boolean;
 }
 
 export interface CreateAppointmentRequest {

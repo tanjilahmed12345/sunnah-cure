@@ -210,6 +210,7 @@
       "profile": "Profile",
       "patients": "Patients",
       "doctors": "Doctors",
+      "staff": "Staff",
       "services": "Services",
       "settings": "Settings"
     },

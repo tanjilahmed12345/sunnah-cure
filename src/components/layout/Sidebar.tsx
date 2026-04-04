@@ -11,6 +11,7 @@ import {
   User,
   Users,
   Stethoscope,
+  UserCheck,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -38,6 +39,7 @@ const iconMap: Record<string, React.ElementType> = {
   User,
   Users,
   Stethoscope,
+  UserCheck,
   Settings,
 };
 

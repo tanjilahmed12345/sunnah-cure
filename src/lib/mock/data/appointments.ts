@@ -14,6 +14,7 @@ export const mockAppointments: Appointment[] = [
     scheduledTime: "10:00 AM",
     paymentStatus: "paid",
     paymentAmount: 1200,
+    chatEnabled: true,
     serviceData: {
       type: "wet",
       numberOfCups: 6,

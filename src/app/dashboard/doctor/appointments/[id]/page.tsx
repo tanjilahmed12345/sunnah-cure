@@ -235,41 +235,55 @@ export default function DoctorAppointmentDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {messages.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  {t.messages.noMessages}
-                </p>
-              ) : (
-                <div className="max-h-80 overflow-y-auto mb-4">
-                  {messages.map((msg) => (
-                    <MessageBubble
-                      key={msg.id}
-                      message={msg}
-                      isOwn={msg.senderId === CURRENT_DOCTOR_USER_ID}
-                    />
-                  ))}
+              {!appointment.chatEnabled ? (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20 p-4 text-center">
+                  <MessageSquare className="h-8 w-8 text-amber-500 mx-auto mb-2" />
+                  <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                    Chat is not enabled for this appointment
+                  </p>
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                    The admin has not enabled chat for this patient. Contact admin if you need to communicate.
+                  </p>
                 </div>
+              ) : (
+                <>
+                  {messages.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      {t.messages.noMessages}
+                    </p>
+                  ) : (
+                    <div className="max-h-80 overflow-y-auto mb-4">
+                      {messages.map((msg) => (
+                        <MessageBubble
+                          key={msg.id}
+                          message={msg}
+                          isOwn={msg.senderId === CURRENT_DOCTOR_USER_ID}
+                        />
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder={t.messages.typeMessage}
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && newMessage.trim()) {
+                          setNewMessage("");
+                        }
+                      }}
+                    />
+                    <Button
+                      size="icon"
+                      onClick={() => {
+                        if (newMessage.trim()) setNewMessage("");
+                      }}
+                    >
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </>
               )}
-              <div className="flex gap-2">
-                <Input
-                  placeholder={t.messages.typeMessage}
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && newMessage.trim()) {
-                      setNewMessage("");
-                    }
-                  }}
-                />
-                <Button
-                  size="icon"
-                  onClick={() => {
-                    if (newMessage.trim()) setNewMessage("");
-                  }}
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
-              </div>
             </CardContent>
           </Card>
         </div>

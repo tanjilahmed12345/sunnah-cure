@@ -19,7 +19,7 @@ import {
   Users,
   CalendarCheck,
   Clock,
-  Stethoscope,
+  UserCheck,
   ClipboardList,
   BarChart3,
 } from "lucide-react";
@@ -43,8 +43,8 @@ export default function AdminDashboardPage() {
   const todayAppointments = mockAppointments.filter(
     (a) => a.scheduledDate === new Date().toISOString().split("T")[0]
   );
-  const pendingDoctors = mockDoctors.filter(
-    (d) => d.approvalStatus === "pending"
+  const totalStaff = mockDoctors.filter(
+    (d) => d.approvalStatus === "approved"
   );
 
   const recentAppointments = [...mockAppointments]
@@ -138,32 +138,37 @@ export default function AdminDashboardPage() {
         description={`${t.dashboard.patient.welcome}, Admin`}
       />
 
-      {/* Stat Cards */}
+      {/* Stat Cards — clickable */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         <StatCard
           label={t.dashboard.admin.totalPatients}
           value={patients.length}
           icon={Users}
+          href="/dashboard/admin/patients"
         />
         <StatCard
           label={t.dashboard.admin.todayAppointments}
           value={todayAppointments.length}
           icon={CalendarCheck}
+          href="/dashboard/admin/appointments?filter=today"
         />
         <StatCard
           label={t.dashboard.admin.pendingAppointments}
           value={pendingAppointments.length}
           icon={Clock}
+          href="/dashboard/admin/appointments?filter=pending"
         />
         <StatCard
-          label={t.dashboard.admin.pendingDoctors}
-          value={pendingDoctors.length}
-          icon={Stethoscope}
+          label="Total Staff"
+          value={totalStaff.length}
+          icon={UserCheck}
+          href="/dashboard/admin/staff"
         />
         <StatCard
           label={t.dashboard.admin.totalAssessments}
           value={mockAssessments.length}
           icon={ClipboardList}
+          href="/dashboard/admin/assessments"
         />
       </div>
 

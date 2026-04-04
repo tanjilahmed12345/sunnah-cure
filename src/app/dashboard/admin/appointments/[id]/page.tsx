@@ -31,6 +31,7 @@ import { formatDate, formatCurrency } from "@/lib/utils";
 import type { Appointment, HijamaData, RuqyahData, CounselingData } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Switch } from "@/components/ui/switch";
 import {
   ArrowLeft,
   User,
@@ -76,6 +77,7 @@ export default function AdminAppointmentDetailPage() {
     appointment?.doctorId || ""
   );
   const [adminNotes, setAdminNotes] = useState(appointment?.adminNotes || "");
+  const [chatEnabled, setChatEnabled] = useState(appointment?.chatEnabled ?? false);
   const [newMessage, setNewMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
@@ -781,6 +783,22 @@ export default function AdminAppointmentDetailPage() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Chat Toggle */}
+              {assignedDoctor && (
+                <div className="flex items-center justify-between rounded-lg border p-3">
+                  <div>
+                    <Label className="cursor-pointer">Enable Chat</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Allow assigned staff to chat with this patient
+                    </p>
+                  </div>
+                  <Switch
+                    checked={chatEnabled}
+                    onCheckedChange={setChatEnabled}
+                  />
+                </div>
+              )}
 
               {/* Admin Notes */}
               <div>

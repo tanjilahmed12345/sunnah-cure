@@ -66,7 +66,7 @@ export const ADMIN_SIDEBAR_ITEMS = [
   { label: "dashboard.sidebar.appointments", href: "/dashboard/admin/appointments", icon: "CalendarCheck" },
   { label: "dashboard.sidebar.assessments", href: "/dashboard/admin/assessments", icon: "ClipboardList" },
   { label: "dashboard.sidebar.patients", href: "/dashboard/admin/patients", icon: "Users" },
-  { label: "dashboard.sidebar.doctors", href: "/dashboard/admin/doctors", icon: "Stethoscope" },
+  { label: "dashboard.sidebar.staff", href: "/dashboard/admin/staff", icon: "UserCheck" },
   { label: "dashboard.sidebar.messages", href: "/dashboard/admin/messages", icon: "MessageSquare" },
   { label: "dashboard.sidebar.services", href: "/dashboard/admin/settings", icon: "Settings" },
   { label: "dashboard.sidebar.profile", href: "/dashboard/profile", icon: "User" },

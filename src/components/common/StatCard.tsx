@@ -1,3 +1,6 @@
+"use client";
+
+import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
@@ -8,11 +11,12 @@ interface StatCardProps {
   icon: LucideIcon;
   trend?: string;
   className?: string;
+  href?: string;
 }
 
-export function StatCard({ label, value, icon: Icon, trend, className }: StatCardProps) {
-  return (
-    <Card className={cn("hover:shadow-md transition-shadow", className)}>
+export function StatCard({ label, value, icon: Icon, trend, className, href }: StatCardProps) {
+  const content = (
+    <Card className={cn("hover:shadow-md transition-shadow", href && "cursor-pointer hover:border-primary/50", className)}>
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
           <div>
@@ -29,4 +33,10 @@ export function StatCard({ label, value, icon: Icon, trend, className }: StatCar
       </CardContent>
     </Card>
   );
+
+  if (href) {
+    return <Link href={href} className="block">{content}</Link>;
+  }
+
+  return content;
 }

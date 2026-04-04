@@ -1,7 +1,9 @@
-import type { User, RegisterRequest } from "./user";
+import type { User } from "./user";
 import type { Timestamps } from "./common";
 
 export type DoctorApprovalStatus = "pending" | "approved" | "rejected";
+
+export type StaffDesignation = "raqi" | "hajjam";
 
 export type Specialization =
   | "hijama_therapy"
@@ -14,16 +16,11 @@ export interface DoctorProfile extends Timestamps {
   userId: string;
   user: User;
   specialization: Specialization;
+  designations: StaffDesignation[];
   qualifications: string;
   experienceYears: number;
   bio: string;
   approvalStatus: DoctorApprovalStatus;
   certificateUrls: string[];
-}
-
-export interface DoctorRegisterRequest extends RegisterRequest {
-  specialization: Specialization;
-  qualifications: string;
-  experienceYears: number;
-  bio: string;
+  profilePictureUrl?: string;
 }
