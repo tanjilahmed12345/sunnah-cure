@@ -19,6 +19,31 @@ def _get_or_create_conversation(appointment, *participants):
     return conv
 
 
+def _get_or_create_general_conversation(*participants):
+    """Get or create a general (non-appointment) conversation between participants."""
+    participant_ids = {p.id for p in participants}
+    # Look for an existing conversation with no appointment and exactly these participants
+    for conv in Conversation.objects.filter(appointment__isnull=True):
+        if set(conv.participants.values_list("id", flat=True)) == participant_ids:
+            return conv
+    conv = Conversation.objects.create()
+    conv.participants.set(participants)
+    return conv
+
+
+# ---- User signals ----
+
+@receiver(post_save, sender=User)
+def create_patient_admin_conversation(sender, instance, created, **kwargs):
+    """When a patient registers, create a general conversation with each admin."""
+    if created and instance.role == "PATIENT":
+        admins = User.objects.filter(role="ADMIN")
+        for admin in admins:
+            _get_or_create_general_conversation(instance, admin)
+
+
+# ---- Appointment signals ----
+
 @receiver(pre_save, sender=Appointment)
 def track_old_doctor(sender, instance, **kwargs):
     """Track the old doctor before save so we can detect assignment changes."""
@@ -33,13 +58,12 @@ def track_old_doctor(sender, instance, **kwargs):
 
 
 @receiver(post_save, sender=Appointment)
-def auto_create_conversations(sender, instance, created, **kwargs):
+def auto_create_appointment_conversations(sender, instance, created, **kwargs):
     """
-    - On creation: create a conversation between patient and admin(s).
-    - On doctor assignment: create a conversation between patient and doctor.
+    - On creation: create an appointment conversation between patient and admin(s).
+    - On doctor assignment: create an appointment conversation between patient and doctor.
     """
     if created:
-        # Create patient <-> admin conversation
         admins = User.objects.filter(role="ADMIN")
         for admin in admins:
             _get_or_create_conversation(instance, instance.patient, admin)
