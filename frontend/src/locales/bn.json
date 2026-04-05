@@ -273,7 +273,8 @@
     "approve": "অনুমোদন",
     "reject": "প্রত্যাখ্যান",
     "rejectReason": "প্রত্যাখ্যানের কারণ",
-    "internalNotes": "অভ্যন্তরীণ নোট"
+    "internalNotes": "অভ্যন্তরীণ নোট",
+    "noteFromAdmin": "অ্যাডমিনের নোট"
   },
   "booking": {
     "title": "অ্যাপয়েন্টমেন্ট বুক করুন",

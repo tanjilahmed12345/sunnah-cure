@@ -324,6 +324,17 @@ export default function AppointmentDetailPage() {
                 </div>
               )}
 
+              {appointment.adminNotes && (appointment.status === "approved" || appointment.status === "completed") && (
+                <div className="rounded-lg bg-primary/5 border border-primary/20 p-3">
+                  <p className="text-sm font-medium text-primary mb-1">
+                    {t.appointments.noteFromAdmin}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {appointment.adminNotes}
+                  </p>
+                </div>
+              )}
+
               <Separator />
 
               {/* Service-specific data */}

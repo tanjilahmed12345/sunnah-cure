@@ -273,7 +273,8 @@
     "approve": "Approve",
     "reject": "Reject",
     "rejectReason": "Reason for rejection",
-    "internalNotes": "Internal Notes"
+    "internalNotes": "Internal Notes",
+    "noteFromAdmin": "Note from Admin"
   },
   "booking": {
     "title": "Book Appointment",
