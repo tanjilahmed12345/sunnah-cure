@@ -100,7 +100,8 @@ export default function AdminAppointmentDetailPage() {
         setLocalPaymentStatus(apt.paymentStatus || "unpaid");
       }
       if (doctorsRes.success) {
-        setDoctors(doctorsRes.data.filter((d) => d.approvalStatus === "approved"));
+        const list = Array.isArray(doctorsRes.data) ? doctorsRes.data : doctorsRes.data.results ?? [];
+        setDoctors(list.filter((d: DoctorProfile) => d.approvalStatus === "approved"));
       }
     } catch (err) {
       console.error("Failed to fetch appointment:", err);
