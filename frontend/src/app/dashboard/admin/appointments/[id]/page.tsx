@@ -152,24 +152,37 @@ export default function AdminAppointmentDetailPage() {
     if (!appointment) return;
     setIsSaving(true);
     try {
-      // Map status to backend action
-      const actionMap: Record<string, string> = {
-        approved: "approve",
-        rejected: "reject",
-        completed: "complete",
-      };
-
-      const action = actionMap[status];
-
-      if (action) {
+      // Only send status transition if it actually changed
+      const statusChanged = status !== appointment.status;
+      if (statusChanged) {
+        const actionMap: Record<string, string> = {
+          approved: "approve",
+          rejected: "reject",
+          completed: "complete",
+        };
+        const action = actionMap[status];
+        if (action) {
+          await apiClient.patch<ApiSuccess<Appointment>>(
+            ENDPOINTS.appointments.update(id),
+            {
+              action,
+              scheduledDate: scheduledDate || undefined,
+              scheduledTime: scheduledTime || undefined,
+              adminNotes: adminNotes || undefined,
+              rejectionReason: status === "rejected" ? adminNotes : undefined,
+            }
+          );
+        }
+      } else {
+        // Update details without changing status
         await apiClient.patch<ApiSuccess<Appointment>>(
           ENDPOINTS.appointments.update(id),
           {
-            action,
+            action: "update_details",
             scheduledDate: scheduledDate || undefined,
             scheduledTime: scheduledTime || undefined,
             adminNotes: adminNotes || undefined,
-            rejectionReason: status === "rejected" ? adminNotes : undefined,
+            chatEnabled,
           }
         );
       }

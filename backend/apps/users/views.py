@@ -99,6 +99,7 @@ class MeView(APIView):
 
 class DoctorListView(generics.ListAPIView):
     serializer_class = DoctorProfileSerializer
+    pagination_class = None
 
     def get_permissions(self):
         # Allow public access when filtering by approved status (for about page)
@@ -132,7 +133,13 @@ class DoctorApproveView(APIView):
     permission_classes = [IsAdmin]
 
     def patch(self, request, pk):
-        profile = DoctorProfile.objects.get(pk=pk)
+        try:
+            profile = DoctorProfile.objects.get(pk=pk)
+        except DoctorProfile.DoesNotExist:
+            return Response(
+                {"success": False, "error": {"code": "NOT_FOUND", "message": "Doctor not found."}},
+                status=status.HTTP_404_NOT_FOUND,
+            )
         profile.approval_status = "approved"
         profile.save(update_fields=["approval_status", "updated_at"])
         return _success(
@@ -145,7 +152,13 @@ class DoctorRejectView(APIView):
     permission_classes = [IsAdmin]
 
     def patch(self, request, pk):
-        profile = DoctorProfile.objects.get(pk=pk)
+        try:
+            profile = DoctorProfile.objects.get(pk=pk)
+        except DoctorProfile.DoesNotExist:
+            return Response(
+                {"success": False, "error": {"code": "NOT_FOUND", "message": "Doctor not found."}},
+                status=status.HTTP_404_NOT_FOUND,
+            )
         profile.approval_status = "rejected"
         profile.save(update_fields=["approval_status", "updated_at"])
         return _success(
@@ -161,7 +174,13 @@ class AddStaffView(APIView):
         serializer = AddStaffSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        profile = DoctorProfile.objects.select_related("user").get(user=user)
+        try:
+            profile = DoctorProfile.objects.select_related("user").get(user=user)
+        except DoctorProfile.DoesNotExist:
+            return Response(
+                {"success": False, "error": {"code": "SERVER_ERROR", "message": "Failed to create doctor profile."}},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
         return _success(
             data=DoctorProfileSerializer(profile).data,
             message="Staff member added.",
@@ -173,7 +192,13 @@ class DeleteStaffView(APIView):
     permission_classes = [IsAdmin]
 
     def delete(self, request, pk):
-        profile = DoctorProfile.objects.select_related("user").get(pk=pk)
+        try:
+            profile = DoctorProfile.objects.select_related("user").get(pk=pk)
+        except DoctorProfile.DoesNotExist:
+            return Response(
+                {"success": False, "error": {"code": "NOT_FOUND", "message": "Staff not found."}},
+                status=status.HTTP_404_NOT_FOUND,
+            )
         user = profile.user
         profile.delete()
         user.delete()
@@ -187,6 +212,7 @@ class DeleteStaffView(APIView):
 class PatientListView(generics.ListAPIView):
     permission_classes = [IsAdmin]
     serializer_class = UserSerializer
+    pagination_class = None
 
     def get_queryset(self):
         qs = User.objects.filter(role="PATIENT")

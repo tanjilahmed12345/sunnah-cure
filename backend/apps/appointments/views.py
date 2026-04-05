@@ -3,6 +3,7 @@ from datetime import datetime
 
 from django.db.models import Count, Q, Sum
 from django.utils import timezone
+from django_fsm import TransitionNotAllowed
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -112,7 +113,13 @@ class AppointmentDetailView(APIView):
         action = request.data.get("action")
 
         if action == "approve":
-            appointment.approve()
+            try:
+                appointment.approve()
+            except TransitionNotAllowed:
+                return Response(
+                    {"success": False, "error": {"code": "INVALID_STATE", "message": f"Cannot approve appointment in '{appointment.status}' status."}},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             appointment.scheduled_date = request.data.get("scheduledDate")
             appointment.scheduled_time = request.data.get("scheduledTime")
             appointment.admin_notes = request.data.get("adminNotes", "")
@@ -120,12 +127,24 @@ class AppointmentDetailView(APIView):
             appointment.save()
 
         elif action == "reject":
-            appointment.reject()
+            try:
+                appointment.reject()
+            except TransitionNotAllowed:
+                return Response(
+                    {"success": False, "error": {"code": "INVALID_STATE", "message": f"Cannot reject appointment in '{appointment.status}' status."}},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             appointment.rejection_reason = request.data.get("rejectionReason", "")
             appointment.save()
 
         elif action == "complete":
-            appointment.complete()
+            try:
+                appointment.complete()
+            except TransitionNotAllowed:
+                return Response(
+                    {"success": False, "error": {"code": "INVALID_STATE", "message": f"Cannot complete appointment in '{appointment.status}' status."}},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             appointment.save()
 
         elif action == "assign_doctor":
@@ -160,6 +179,18 @@ class AppointmentDetailView(APIView):
             appointment.payment_status = "paid"
             appointment.save(update_fields=["payment_status", "updated_at"])
 
+        elif action == "update_details":
+            # Update date/time/notes without changing status
+            if request.data.get("scheduledDate") is not None:
+                appointment.scheduled_date = request.data.get("scheduledDate") or None
+            if request.data.get("scheduledTime") is not None:
+                appointment.scheduled_time = request.data.get("scheduledTime") or None
+            if request.data.get("adminNotes") is not None:
+                appointment.admin_notes = request.data.get("adminNotes", "")
+            if request.data.get("chatEnabled") is not None:
+                appointment.chat_enabled = request.data.get("chatEnabled")
+            appointment.save()
+
         else:
             return Response(
                 {"success": False, "error": {"code": "BAD_REQUEST", "message": "Invalid action."}},
@@ -168,7 +199,7 @@ class AppointmentDetailView(APIView):
 
         return _success(
             data=AppointmentSerializer(appointment).data,
-            message=f"Appointment {action}d.",
+            message=f"Appointment updated.",
         )
 
 
@@ -181,7 +212,13 @@ class AppointmentCancelView(APIView):
                 {"success": False, "error": {"code": "NOT_FOUND", "message": "Not found."}},
                 status=status.HTTP_404_NOT_FOUND,
             )
-        appointment.cancel()
+        try:
+            appointment.cancel()
+        except TransitionNotAllowed:
+            return Response(
+                {"success": False, "error": {"code": "INVALID_STATE", "message": f"Cannot cancel appointment in '{appointment.status}' status."}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         appointment.save()
         return _success(
             data=AppointmentSerializer(appointment).data,
@@ -245,7 +282,7 @@ class AdminStatsView(APIView):
         total_staff = DoctorProfile.objects.filter(approval_status="approved").count()
         total_assessments = HealthAssessment.objects.count()
 
-        today = datetime.now().date()
+        today = timezone.now().date()
         today_appointments = Appointment.objects.filter(scheduled_date=today).count()
 
         return _success(data={
