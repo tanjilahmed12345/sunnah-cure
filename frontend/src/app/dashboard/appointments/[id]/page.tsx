@@ -72,24 +72,21 @@ export default function AppointmentDetailPage() {
       );
       setAppointment(appointmentRes.data);
 
-      // Fetch conversations and find the one for this appointment
+      // Get or create conversation for this appointment
       try {
-        const convRes = await apiClient.get<ApiSuccess<Conversation[]>>(
-          ENDPOINTS.messages.conversations
+        const convRes = await apiClient.post<ApiSuccess<Conversation>>(
+          ENDPOINTS.messages.getOrCreateConversation,
+          { appointmentId: params.id }
         );
-        const conv = convRes.data.find(
-          (c) => c.appointmentId === params.id
-        );
-        if (conv) {
-          setConversationId(conv.id);
-          // Fetch messages for this conversation
+        if (convRes.success) {
+          setConversationId(convRes.data.id);
           const msgRes = await apiClient.get<ApiSuccess<Message[]>>(
-            ENDPOINTS.messages.messages(conv.id)
+            ENDPOINTS.messages.messages(convRes.data.id)
           );
-          setAppointmentMessages(msgRes.data);
+          if (msgRes.success) setAppointmentMessages(msgRes.data);
         }
       } catch {
-        // Conversations may not exist yet, that's fine
+        // conversation fetch failed
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load appointment");
@@ -153,20 +150,32 @@ export default function AppointmentDetailPage() {
 
   async function handleSendMessage() {
     if (!message.trim()) return;
-    if (!conversationId) {
-      toast.error("No conversation found for this appointment.");
-      return;
-    }
     setIsSending(true);
     try {
-      await apiClient.post(ENDPOINTS.messages.send(conversationId), {
+      // Ensure we have a conversation
+      let convId = conversationId;
+      if (!convId) {
+        const convRes = await apiClient.post<ApiSuccess<Conversation>>(
+          ENDPOINTS.messages.getOrCreateConversation,
+          { appointmentId: params.id }
+        );
+        if (convRes.success) {
+          convId = convRes.data.id;
+          setConversationId(convId);
+        }
+      }
+      if (!convId) {
+        toast.error("Could not create conversation.");
+        return;
+      }
+      await apiClient.post(ENDPOINTS.messages.send(convId), {
         content: message.trim(),
       });
       toast.success(t.messages.send);
       setMessage("");
       // Refresh messages
       const msgRes = await apiClient.get<ApiSuccess<Message[]>>(
-        ENDPOINTS.messages.messages(conversationId)
+        ENDPOINTS.messages.messages(convId)
       );
       setAppointmentMessages(msgRes.data);
     } catch (err) {
@@ -387,9 +396,9 @@ export default function AppointmentDetailPage() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter") handleSendMessage();
                   }}
-                  disabled={isSending || !conversationId}
+                  disabled={isSending}
                 />
-                <Button size="icon" onClick={handleSendMessage} disabled={isSending || !conversationId}>
+                <Button size="icon" onClick={handleSendMessage} disabled={isSending}>
                   {isSending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (

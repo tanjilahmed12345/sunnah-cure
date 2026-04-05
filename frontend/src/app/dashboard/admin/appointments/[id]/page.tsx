@@ -86,10 +86,9 @@ export default function AdminAppointmentDetailPage() {
 
   const fetchAppointment = useCallback(async () => {
     try {
-      const [aptRes, doctorsRes, convsRes] = await Promise.all([
+      const [aptRes, doctorsRes] = await Promise.all([
         apiClient.get<ApiSuccess<Appointment>>(ENDPOINTS.appointments.detail(id)),
         apiClient.get<ApiSuccess<DoctorProfile[]>>(ENDPOINTS.doctors.list),
-        apiClient.get<ApiSuccess<Conversation[]>>(ENDPOINTS.messages.conversations),
       ]);
       if (aptRes.success) {
         const apt = aptRes.data;
@@ -106,15 +105,21 @@ export default function AdminAppointmentDetailPage() {
         const list = Array.isArray(doctorsRes.data) ? doctorsRes.data : doctorsRes.data.results ?? [];
         setDoctors(list.filter((d: DoctorProfile) => d.approvalStatus === "approved"));
       }
-      if (convsRes.success) {
-        const conv = convsRes.data.find((c: Conversation) => c.appointmentId === id);
-        if (conv) {
-          setConversationId(conv.id);
+      // Get or create conversation for this appointment
+      try {
+        const convRes = await apiClient.post<ApiSuccess<Conversation>>(
+          ENDPOINTS.messages.getOrCreateConversation,
+          { appointmentId: id }
+        );
+        if (convRes.success) {
+          setConversationId(convRes.data.id);
           const msgsRes = await apiClient.get<ApiSuccess<Message[]>>(
-            ENDPOINTS.messages.messages(conv.id)
+            ENDPOINTS.messages.messages(convRes.data.id)
           );
           if (msgsRes.success) setMessages(msgsRes.data);
         }
+      } catch {
+        // conversation fetch failed, messaging will be unavailable
       }
     } catch (err) {
       console.error("Failed to fetch appointment:", err);
@@ -191,11 +196,27 @@ export default function AdminAppointmentDetailPage() {
   };
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !conversationId) return;
+    if (!newMessage.trim()) return;
     setIsSendingMessage(true);
     try {
+      // Ensure we have a conversation
+      let convId = conversationId;
+      if (!convId) {
+        const convRes = await apiClient.post<ApiSuccess<Conversation>>(
+          ENDPOINTS.messages.getOrCreateConversation,
+          { appointmentId: id }
+        );
+        if (convRes.success) {
+          convId = convRes.data.id;
+          setConversationId(convId);
+        }
+      }
+      if (!convId) {
+        toast.error("Could not create conversation.");
+        return;
+      }
       const res = await apiClient.post<ApiSuccess<Message>>(
-        ENDPOINTS.messages.send(conversationId),
+        ENDPOINTS.messages.send(convId),
         { content: newMessage.trim() }
       );
       if (res.success) {
@@ -486,9 +507,9 @@ export default function AdminAppointmentDetailPage() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter") handleSendMessage();
                   }}
-                  disabled={!conversationId || isSendingMessage}
+                  disabled={isSendingMessage}
                 />
-                <Button size="icon" onClick={handleSendMessage} disabled={!conversationId || isSendingMessage}>
+                <Button size="icon" onClick={handleSendMessage} disabled={isSendingMessage}>
                   {isSendingMessage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 </Button>
               </div>

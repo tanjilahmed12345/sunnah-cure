@@ -48,15 +48,15 @@ export default function DoctorAppointmentDetailPage() {
           setDoctorNotes(res.data.adminNotes || "");
         }
 
-        // Fetch conversations and find one for this appointment
-        const convsRes = await apiClient.get<ApiSuccess<Conversation[]>>(ENDPOINTS.messages.conversations);
-        if (convsRes.success) {
-          const conv = convsRes.data.find((c) => c.appointmentId === id);
-          if (conv) {
-            setConversationId(conv.id);
-            const msgsRes = await apiClient.get<ApiSuccess<Message[]>>(ENDPOINTS.messages.messages(conv.id));
-            if (msgsRes.success) setMessages(msgsRes.data);
-          }
+        // Get or create conversation for this appointment
+        const convRes = await apiClient.post<ApiSuccess<Conversation>>(
+          ENDPOINTS.messages.getOrCreateConversation,
+          { appointmentId: id }
+        );
+        if (convRes.success) {
+          setConversationId(convRes.data.id);
+          const msgsRes = await apiClient.get<ApiSuccess<Message[]>>(ENDPOINTS.messages.messages(convRes.data.id));
+          if (msgsRes.success) setMessages(msgsRes.data);
         }
       } catch { /* ignore */ } finally { setLoading(false); }
     }
@@ -89,11 +89,23 @@ export default function DoctorAppointmentDetailPage() {
   const patient = appointment.patient;
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !conversationId) return;
+    if (!newMessage.trim()) return;
     setIsSending(true);
     try {
+      let convId = conversationId;
+      if (!convId) {
+        const convRes = await apiClient.post<ApiSuccess<Conversation>>(
+          ENDPOINTS.messages.getOrCreateConversation,
+          { appointmentId: id }
+        );
+        if (convRes.success) {
+          convId = convRes.data.id;
+          setConversationId(convId);
+        }
+      }
+      if (!convId) return;
       const res = await apiClient.post<ApiSuccess<Message>>(
-        ENDPOINTS.messages.send(conversationId),
+        ENDPOINTS.messages.send(convId),
         { content: newMessage.trim() }
       );
       if (res.success) {

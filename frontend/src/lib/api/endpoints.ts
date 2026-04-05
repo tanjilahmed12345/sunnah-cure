@@ -39,6 +39,7 @@ export const ENDPOINTS = {
   },
   messages: {
     conversations: "/messages/conversations/",
+    getOrCreateConversation: "/messages/conversations/get-or-create/",
     messages: (conversationId: string) => `/messages/${conversationId}/`,
     send: (conversationId: string) => `/messages/${conversationId}/send/`,
   },
