@@ -118,17 +118,39 @@ export default function AdminAppointmentDetailPage() {
     if (!appointment) return;
     setIsSaving(true);
     try {
-      await apiClient.patch<ApiSuccess<Appointment>>(
-        ENDPOINTS.appointments.update(id),
-        {
-          status,
-          scheduledDate: scheduledDate || undefined,
-          scheduledTime: scheduledTime || undefined,
-          doctorId: assignedDoctor || undefined,
-          adminNotes: adminNotes || undefined,
-          chatEnabled,
-        }
-      );
+      // Map status to backend action
+      const actionMap: Record<string, string> = {
+        approved: "approve",
+        rejected: "reject",
+        completed: "complete",
+      };
+
+      const action = actionMap[status];
+
+      if (action) {
+        await apiClient.patch<ApiSuccess<Appointment>>(
+          ENDPOINTS.appointments.update(id),
+          {
+            action,
+            scheduledDate: scheduledDate || undefined,
+            scheduledTime: scheduledTime || undefined,
+            adminNotes: adminNotes || undefined,
+            rejectionReason: status === "rejected" ? adminNotes : undefined,
+          }
+        );
+      }
+
+      // Assign doctor separately if changed
+      if (assignedDoctor && assignedDoctor !== appointment.doctorId) {
+        await apiClient.patch<ApiSuccess<Appointment>>(
+          ENDPOINTS.appointments.update(id),
+          {
+            action: "assign_doctor",
+            doctorId: assignedDoctor,
+          }
+        );
+      }
+
       toast.success("Appointment updated successfully.");
       fetchAppointment();
     } catch (err) {
