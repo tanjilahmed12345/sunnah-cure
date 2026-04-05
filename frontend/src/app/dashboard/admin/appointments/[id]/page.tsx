@@ -349,7 +349,7 @@ export default function AdminAppointmentDetailPage() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>{appointment.serviceName}</CardTitle>
-                <StatusBadge status={appointment.status} />
+                <StatusBadge status={status} />
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -365,9 +365,9 @@ export default function AdminAppointmentDetailPage() {
                     {t.appointments.dateTime}
                   </span>
                   <p className="font-medium">
-                    {appointment.scheduledDate
-                      ? `${formatDate(appointment.scheduledDate)} ${appointment.scheduledTime || ""}`
-                      : t.appointments.pendingDate}
+                    {scheduledDate
+                      ? `${formatDate(scheduledDate)} ${scheduledTime || ""}`
+                      : "Not Assigned"}
                   </p>
                 </div>
                 <div>
@@ -388,9 +388,9 @@ export default function AdminAppointmentDetailPage() {
                     {t.appointments.doctor}
                   </span>
                   <p className="font-medium">
-                    {doctor
-                      ? doctor.user.name
-                      : "Not assigned"}
+                    {assignedDoctor
+                      ? doctors.find((d) => d.id === assignedDoctor)?.user.name || doctor?.user.name || "Not Assigned"
+                      : "Not Assigned"}
                   </p>
                 </div>
               </div>
