@@ -200,10 +200,18 @@ export default function AdminAppointmentDetailPage() {
     }
     setIsProcessingPayment(true);
     try {
-      // Simulate payment confirmation - in real app, call payment endpoint
+      await apiClient.patch<ApiSuccess<Appointment>>(
+        ENDPOINTS.appointments.update(id),
+        {
+          action: "confirm_payment",
+          method: paymentMethod,
+          transactionId: paymentTransactionId || undefined,
+        }
+      );
       setLocalPaymentStatus("paid");
       setShowPaymentForm(false);
       toast.success("Payment recorded successfully.");
+      fetchAppointment();
     } catch (err) {
       toast.error("Failed to process payment.");
       console.error(err);

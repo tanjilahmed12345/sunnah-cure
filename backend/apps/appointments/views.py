@@ -1,6 +1,8 @@
+import time
 from datetime import datetime
 
 from django.db.models import Count, Q, Sum
+from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -139,6 +141,25 @@ class AppointmentDetailView(APIView):
                     {"success": False, "error": {"code": "NOT_FOUND", "message": "Doctor not found."}},
                     status=status.HTTP_404_NOT_FOUND,
                 )
+
+        elif action == "confirm_payment":
+            from apps.payments.models import Payment
+
+            method = request.data.get("method", "cash")
+            transaction_id = request.data.get("transactionId", "")
+
+            Payment.objects.create(
+                appointment=appointment,
+                patient=appointment.patient,
+                amount_bdt=appointment.payment_amount or 0,
+                method=method,
+                status="completed",
+                transaction_id=transaction_id or f"ADMIN-{int(time.time())}",
+                paid_at=timezone.now(),
+            )
+            appointment.payment_status = "paid"
+            appointment.save(update_fields=["payment_status", "updated_at"])
+
         else:
             return Response(
                 {"success": False, "error": {"code": "BAD_REQUEST", "message": "Invalid action."}},
