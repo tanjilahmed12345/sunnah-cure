@@ -25,7 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatDate, formatCurrency } from "@/lib/utils";
-import type { Appointment, DoctorProfile, HijamaData, RuqyahData, CounselingData, Message, Payment } from "@/types";
+import type { Appointment, DoctorProfile, HijamaData, RuqyahData, CounselingData, Message, Payment, Conversation } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
@@ -59,8 +59,10 @@ export default function AdminAppointmentDetailPage() {
   const [appointment, setAppointment] = useState<Appointment | null>(null);
   const [doctors, setDoctors] = useState<DoctorProfile[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const [payment, setPayment] = useState<Payment | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
 
   const [status, setStatus] = useState("");
   const [scheduledDate, setScheduledDate] = useState("");
@@ -84,9 +86,10 @@ export default function AdminAppointmentDetailPage() {
 
   const fetchAppointment = useCallback(async () => {
     try {
-      const [aptRes, doctorsRes] = await Promise.all([
+      const [aptRes, doctorsRes, convsRes] = await Promise.all([
         apiClient.get<ApiSuccess<Appointment>>(ENDPOINTS.appointments.detail(id)),
         apiClient.get<ApiSuccess<DoctorProfile[]>>(ENDPOINTS.doctors.list),
+        apiClient.get<ApiSuccess<Conversation[]>>(ENDPOINTS.messages.conversations),
       ]);
       if (aptRes.success) {
         const apt = aptRes.data;
@@ -102,6 +105,16 @@ export default function AdminAppointmentDetailPage() {
       if (doctorsRes.success) {
         const list = Array.isArray(doctorsRes.data) ? doctorsRes.data : doctorsRes.data.results ?? [];
         setDoctors(list.filter((d: DoctorProfile) => d.approvalStatus === "approved"));
+      }
+      if (convsRes.success) {
+        const conv = convsRes.data.find((c: Conversation) => c.appointmentId === id);
+        if (conv) {
+          setConversationId(conv.id);
+          const msgsRes = await apiClient.get<ApiSuccess<Message[]>>(
+            ENDPOINTS.messages.messages(conv.id)
+          );
+          if (msgsRes.success) setMessages(msgsRes.data);
+        }
       }
     } catch (err) {
       console.error("Failed to fetch appointment:", err);
@@ -161,21 +174,23 @@ export default function AdminAppointmentDetailPage() {
     }
   };
 
-  const handleSendMessage = () => {
-    if (!newMessage.trim()) return;
-    const msg: Message = {
-      id: `msg-${Date.now()}`,
-      conversationId: "conv-1",
-      senderId: "admin-1",
-      senderName: "Admin",
-      senderRole: "ADMIN" as const,
-      content: newMessage.trim(),
-      isRead: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    setMessages((prev) => [...prev, msg]);
-    setNewMessage("");
+  const handleSendMessage = async () => {
+    if (!newMessage.trim() || !conversationId) return;
+    setIsSendingMessage(true);
+    try {
+      const res = await apiClient.post<ApiSuccess<Message>>(
+        ENDPOINTS.messages.send(conversationId),
+        { content: newMessage.trim() }
+      );
+      if (res.success) {
+        setMessages((prev) => [...prev, res.data]);
+        setNewMessage("");
+      }
+    } catch {
+      toast.error("Failed to send message.");
+    } finally {
+      setIsSendingMessage(false);
+    }
   };
 
   const handleConfirmPayment = async () => {
@@ -447,9 +462,10 @@ export default function AdminAppointmentDetailPage() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter") handleSendMessage();
                   }}
+                  disabled={!conversationId || isSendingMessage}
                 />
-                <Button size="icon" onClick={handleSendMessage}>
-                  <Send className="h-4 w-4" />
+                <Button size="icon" onClick={handleSendMessage} disabled={!conversationId || isSendingMessage}>
+                  {isSendingMessage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 </Button>
               </div>
             </CardContent>

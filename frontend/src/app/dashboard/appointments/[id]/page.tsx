@@ -371,9 +371,9 @@ export default function AppointmentDetailPage() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter") handleSendMessage();
                   }}
-                  disabled={isSending}
+                  disabled={isSending || !conversationId}
                 />
-                <Button size="icon" onClick={handleSendMessage} disabled={isSending}>
+                <Button size="icon" onClick={handleSendMessage} disabled={isSending || !conversationId}>
                   {isSending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (

@@ -50,13 +50,24 @@ class ConversationMessagesView(APIView):
 class SendMessageView(APIView):
     def post(self, request, conversation_id):
         try:
-            conversation = Conversation.objects.get(
+            conversation = Conversation.objects.select_related("appointment").get(
                 pk=conversation_id, participants=request.user
             )
         except Conversation.DoesNotExist:
             return Response(
                 {"success": False, "error": {"code": "NOT_FOUND", "message": "Not found."}},
                 status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Doctors can only send messages if chat is enabled for this appointment
+        if (
+            request.user.role == "DOCTOR"
+            and conversation.appointment
+            and not conversation.appointment.chat_enabled
+        ):
+            return Response(
+                {"success": False, "error": {"code": "FORBIDDEN", "message": "Chat is not enabled for this appointment."}},
+                status=status.HTTP_403_FORBIDDEN,
             )
 
         content = request.data.get("content", "").strip()
