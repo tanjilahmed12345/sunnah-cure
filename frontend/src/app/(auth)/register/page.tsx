@@ -71,7 +71,7 @@ export default function RegisterPage() {
       password: "",
       confirmPassword: "",
       address: "",
-      age: undefined as unknown as number,
+      age: "" as unknown as number,
       gender: undefined as unknown as "male" | "female",
     },
   });

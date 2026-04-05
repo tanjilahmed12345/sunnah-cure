@@ -188,14 +188,19 @@ export default function ContactPage() {
         </div>
       </div>
 
-      {/* Map Placeholder */}
+      {/* Map Section */}
       <div className="mt-12 max-w-6xl mx-auto">
-        <div className="rounded-xl border bg-muted/50 h-64 sm:h-80 flex items-center justify-center">
-          <div className="text-center text-muted-foreground">
-            <MapPin className="h-10 w-10 mx-auto mb-2 opacity-50" />
-            <p className="text-sm font-medium">Map</p>
-            <p className="text-xs">Interactive map will be displayed here</p>
-          </div>
+        <div className="rounded-xl border overflow-hidden h-64 sm:h-80">
+          <iframe
+            title="Our Location"
+            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d233668.0385207556!2d90.27923991089498!3d23.780573258035968!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3755b8b087026b81%3A0x8fa563b5e28c5823!2sDhaka%2C%20Bangladesh!5e0!3m2!1sen!2sus!4v1"
+            width="100%"
+            height="100%"
+            style={{ border: 0 }}
+            allowFullScreen
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+          />
         </div>
       </div>
     </div>
