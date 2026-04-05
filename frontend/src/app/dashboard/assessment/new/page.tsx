@@ -199,8 +199,8 @@ function Step1Form({
   const form = useForm<AssessmentStep1Data>({
     resolver: zodResolver(assessmentStep1Schema) as any,
     defaultValues: defaultValues || {
-      prayerFrequency: undefined as unknown as AssessmentStep1Data["prayerFrequency"],
-      quranFrequency: undefined as unknown as AssessmentStep1Data["quranFrequency"],
+      prayerFrequency: "" as unknown as AssessmentStep1Data["prayerFrequency"],
+      quranFrequency: "" as unknown as AssessmentStep1Data["quranFrequency"],
       spiritualPractices: [],
       confidentialNotes: "",
     },

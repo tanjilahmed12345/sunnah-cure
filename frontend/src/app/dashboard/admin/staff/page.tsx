@@ -83,12 +83,12 @@ export default function AdminStaffPage() {
     defaultValues: {
       name: "",
       phone: "",
-      gender: undefined as unknown as "male" | "female",
-      age: undefined as unknown as number,
+      gender: "" as unknown as "male" | "female",
+      age: "" as unknown as number,
       address: "",
       designations: [],
       qualifications: "",
-      experienceYears: undefined as unknown as number,
+      experienceYears: "" as unknown as number,
       bio: "",
     },
   });
@@ -114,12 +114,12 @@ export default function AdminStaffPage() {
     form.reset({
       name: "",
       phone: "",
-      gender: undefined as unknown as "male" | "female",
-      age: undefined as unknown as number,
+      gender: "" as unknown as "male" | "female",
+      age: "" as unknown as number,
       address: "",
       designations: [],
       qualifications: "",
-      experienceYears: undefined as unknown as number,
+      experienceYears: "" as unknown as number,
       bio: "",
     });
     setEditingStaff(null);
