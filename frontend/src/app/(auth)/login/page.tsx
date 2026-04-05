@@ -53,7 +53,7 @@ function LoginContent() {
   const searchParams = useSearchParams();
   const { login } = useAuth();
 
-  const redirectTo = searchParams.get("redirect") || "/dashboard";
+  const redirectTo = searchParams.get("redirect") || "/";
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<LoginFormData>({

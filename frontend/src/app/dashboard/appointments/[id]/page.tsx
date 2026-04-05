@@ -102,6 +102,22 @@ export default function AppointmentDetailPage() {
     fetchData();
   }, [fetchData]);
 
+  // Poll for new messages every 5 seconds
+  useEffect(() => {
+    if (!conversationId) return;
+    const interval = setInterval(async () => {
+      try {
+        const msgRes = await apiClient.get<ApiSuccess<Message[]>>(
+          ENDPOINTS.messages.messages(conversationId)
+        );
+        if (msgRes.success) setAppointmentMessages(msgRes.data);
+      } catch {
+        // ignore
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [conversationId]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">

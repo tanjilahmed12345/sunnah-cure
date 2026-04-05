@@ -30,6 +30,8 @@ export function useNotifications() {
 
   useEffect(() => {
     fetchNotifications();
+    const interval = setInterval(fetchNotifications, 15000);
+    return () => clearInterval(interval);
   }, [fetchNotifications]);
 
   const markAsRead = useCallback(async (id: string) => {

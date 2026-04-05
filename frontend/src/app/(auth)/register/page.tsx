@@ -89,7 +89,7 @@ export default function RegisterPage() {
         gender: data.gender,
       });
       toast.success("Registration successful!");
-      router.push("/dashboard");
+      router.push("/");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Registration failed");
     } finally {

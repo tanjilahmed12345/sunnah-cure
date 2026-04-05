@@ -62,6 +62,28 @@ export default function AdminMessagesPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
 
+  // Poll conversations list every 10s and active messages every 5s
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await apiClient.get<ApiSuccess<Conversation[]>>(ENDPOINTS.messages.conversations);
+        if (res.success) setConversations(res.data);
+      } catch { /* ignore */ }
+    }, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (!selectedConversation) return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await apiClient.get<ApiSuccess<Message[]>>(ENDPOINTS.messages.messages(selectedConversation.id));
+        if (res.success) setMessages(res.data);
+      } catch { /* ignore */ }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [selectedConversation]);
+
   const getOtherParticipant = (conv: Conversation) => {
     return conv.participants.find((p) => p.userId !== user?.id);
   };

@@ -63,6 +63,18 @@ export default function DoctorAppointmentDetailPage() {
     fetchData();
   }, [id]);
 
+  // Poll for new messages every 5 seconds
+  useEffect(() => {
+    if (!conversationId) return;
+    const interval = setInterval(async () => {
+      try {
+        const msgsRes = await apiClient.get<ApiSuccess<Message[]>>(ENDPOINTS.messages.messages(conversationId));
+        if (msgsRes.success) setMessages(msgsRes.data);
+      } catch { /* ignore */ }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [conversationId]);
+
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
 
   if (!appointment) {

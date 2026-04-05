@@ -83,6 +83,17 @@ export default function AdminDashboardPage() {
     [appointments]
   );
 
+  const pendingRequests = useMemo(
+    () =>
+      appointments
+        .filter((a) => a.status === "pending")
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        ),
+    [appointments]
+  );
+
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = {
       pending: 0,
@@ -209,6 +220,40 @@ export default function AdminDashboardPage() {
           href="/dashboard/admin/assessments"
         />
       </div>
+
+      {/* Appointment Requests (Pending) */}
+      {pendingRequests.length > 0 && (
+        <div className="mb-6">
+          <Card className="border-yellow-200 dark:border-yellow-800">
+            <CardHeader className="flex flex-row items-center justify-between pb-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Clock className="h-5 w-5 text-yellow-600" />
+                Appointment Requests
+                <span className="ml-1 flex h-6 min-w-6 items-center justify-center rounded-full bg-yellow-100 dark:bg-yellow-900/30 px-2 text-xs font-bold text-yellow-800 dark:text-yellow-400">
+                  {pendingRequests.length}
+                </span>
+              </CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => router.push("/dashboard/admin/appointments?filter=pending")}
+              >
+                {t.common.seeAll}
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <DataTable
+                data={pendingRequests.slice(0, 5)}
+                columns={columns}
+                pageSize={5}
+                onRowClick={(item) =>
+                  router.push(`/dashboard/admin/appointments/${item.id}`)
+                }
+              />
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent appointment requests */}

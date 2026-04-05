@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { DashboardProvider } from "@/contexts/DashboardContext";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { DashboardTopbar } from "@/components/layout/DashboardTopbar";
 import { Loader2 } from "lucide-react";
@@ -35,12 +36,14 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar role={user.role} />
-      <div className="flex-1 flex flex-col min-h-screen">
-        <DashboardTopbar user={user} />
-        <main className="flex-1 p-4 md:p-6 lg:p-8">{children}</main>
+    <DashboardProvider>
+      <div className="flex min-h-screen">
+        <Sidebar role={user.role} />
+        <div className="flex-1 flex flex-col min-h-screen">
+          <DashboardTopbar user={user} />
+          <main className="flex-1 p-4 md:p-6 lg:p-8">{children}</main>
+        </div>
       </div>
-    </div>
+    </DashboardProvider>
   );
 }

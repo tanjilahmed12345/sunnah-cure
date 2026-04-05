@@ -4,6 +4,7 @@ from django.dispatch import receiver
 from apps.appointments.models import Appointment
 from apps.messaging.models import Message
 from apps.payments.models import Payment
+from apps.users.models import User
 
 from .models import Notification
 
@@ -25,7 +26,17 @@ def notify_appointment_status(sender, instance, created, **kwargs):
     old_status = getattr(instance, "_old_status", None)
 
     if created:
-        return  # No notification on creation
+        # Notify all admins about new appointment request
+        admins = User.objects.filter(role="ADMIN")
+        for admin in admins:
+            Notification.objects.create(
+                user=admin,
+                type="appointment_confirmed",
+                title="New Appointment Request",
+                body=f"{instance.patient.name} requested a {instance.service_name} appointment.",
+                action_url=f"/dashboard/admin/appointments/{instance.id}",
+            )
+        return
 
     if old_status == "pending" and instance.status == "approved":
         Notification.objects.create(

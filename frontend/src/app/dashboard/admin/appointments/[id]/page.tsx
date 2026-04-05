@@ -127,6 +127,22 @@ export default function AdminAppointmentDetailPage() {
     fetchAppointment();
   }, [fetchAppointment]);
 
+  // Poll for new messages every 5 seconds
+  useEffect(() => {
+    if (!conversationId) return;
+    const interval = setInterval(async () => {
+      try {
+        const msgsRes = await apiClient.get<ApiSuccess<Message[]>>(
+          ENDPOINTS.messages.messages(conversationId)
+        );
+        if (msgsRes.success) setMessages(msgsRes.data);
+      } catch {
+        // ignore
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [conversationId]);
+
   const handleSave = async () => {
     if (!appointment) return;
     setIsSaving(true);
