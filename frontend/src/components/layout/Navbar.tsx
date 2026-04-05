@@ -78,7 +78,7 @@ export function Navbar() {
                 {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-72 pt-10">
+            <SheetContent side="right" className="w-[280px] sm:w-80 pt-10">
               <nav className="flex flex-col gap-2">
                 {navItems.map((item) => (
                   <Link

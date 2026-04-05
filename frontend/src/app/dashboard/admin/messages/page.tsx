@@ -108,7 +108,7 @@ export default function AdminMessagesPage() {
     <div>
       <PageHeader title={t.messages.title} />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[calc(100vh-220px)]">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4 h-[60vh] md:h-[calc(100vh-220px)]">
         <Card className="md:col-span-1 flex flex-col">
           <ScrollArea className="flex-1">
             <div className="p-2 space-y-1">

@@ -177,7 +177,7 @@ export default function DoctorAppointmentDetailPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div><span className="text-sm text-muted-foreground">{t.appointments.mode}</span><p className="font-medium capitalize">{appointment.mode}</p></div>
                 <div><span className="text-sm text-muted-foreground">{t.appointments.dateTime}</span><p className="font-medium">{appointment.scheduledDate ? `${formatDate(appointment.scheduledDate)} ${appointment.scheduledTime || ""}` : t.appointments.pendingDate}</p></div>
                 <div><span className="text-sm text-muted-foreground">{t.appointments.payment}</span><div className="flex items-center gap-2 mt-1"><PaymentStatusBadge status={appointment.paymentStatus} />{appointment.paymentAmount && <span className="text-sm">{formatCurrency(appointment.paymentAmount)}</span>}</div></div>

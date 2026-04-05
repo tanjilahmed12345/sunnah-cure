@@ -41,9 +41,9 @@ export default function ContactPage() {
         </p>
       </div>
 
-      <div className="grid lg:grid-cols-5 gap-8 max-w-6xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 md:gap-6 lg:gap-8 max-w-6xl mx-auto">
         {/* Contact Form */}
-        <div className="lg:col-span-3">
+        <div className="md:col-span-3">
           <Card className="rounded-xl">
             <CardHeader>
               <CardTitle>Send Us a Message</CardTitle>
@@ -104,7 +104,7 @@ export default function ContactPage() {
         </div>
 
         {/* Contact Info Sidebar */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="md:col-span-2 space-y-6">
           {/* Address */}
           <Card className="rounded-xl">
             <CardContent className="p-6">

@@ -56,7 +56,7 @@ export default function AboutPage() {
       {/* Values */}
       <section className="py-16 sm:py-20 bg-background">
         <div className="container mx-auto px-4">
-          <div className="grid sm:grid-cols-3 gap-6 max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 max-w-4xl mx-auto">
             {[
               {
                 icon: Heart,
@@ -93,7 +93,7 @@ export default function AboutPage() {
       {/* Mission & Vision */}
       <section className="py-16 sm:py-20 bg-muted/30">
         <div className="container mx-auto px-4">
-          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 max-w-5xl mx-auto">
             {/* Mission */}
             <Card className="rounded-xl border-l-4 border-l-primary">
               <CardContent className="p-8">
@@ -151,7 +151,7 @@ export default function AboutPage() {
               to your well-being.
             </p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 max-w-5xl mx-auto">
             {approvedDoctors.map((doctor) => {
               const initials = doctor.user.name
                 .split(" ")

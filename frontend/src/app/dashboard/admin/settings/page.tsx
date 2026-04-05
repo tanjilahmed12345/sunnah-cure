@@ -208,7 +208,7 @@ export default function AdminSettingsPage() {
                 {service.type === "hijama" ? (
                   <div className="space-y-3 rounded-lg border p-3 bg-muted/30">
                     <Label className="text-sm font-semibold">Cup-Based Pricing</Label>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <Label className="text-xs">Minimum Cups</Label>
                         <Input
@@ -249,7 +249,7 @@ export default function AdminSettingsPage() {
                 ) : service.editIsOnline && service.editIsOffline ? (
                   <div className="space-y-3 rounded-lg border p-3 bg-muted/30">
                     <Label className="text-sm font-semibold">Mode-Based Pricing</Label>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <Label className="text-xs">Offline Price (BDT)</Label>
                         <Input

@@ -426,7 +426,7 @@ export default function AdminAppointmentDetailPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <span className="text-sm text-muted-foreground">
                     {t.appointments.mode}
@@ -620,7 +620,7 @@ export default function AdminAppointmentDetailPage() {
             <CardContent>
               {/* Existing payment record */}
               {payment && localPaymentStatus === "paid" && (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <span className="text-sm text-muted-foreground">
                       {t.payment.amount}
@@ -704,7 +704,7 @@ export default function AdminAppointmentDetailPage() {
                         setPaymentBankName("");
                         setPaymentAccountNo("");
                       }}
-                      className="grid grid-cols-2 gap-2 mt-2"
+                      className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2"
                     >
                       {[
                         { value: "cash", label: "Cash" },
@@ -898,7 +898,7 @@ export default function AdminAppointmentDetailPage() {
               {/* Set Date/Time */}
               <div>
                 <Label>{t.appointments.setDateTime}</Label>
-                <div className="grid grid-cols-2 gap-2 mt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
                   <Input
                     type="date"
                     value={scheduledDate}
